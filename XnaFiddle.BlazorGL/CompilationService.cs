@@ -69,7 +69,9 @@ namespace XnaFiddle
 
         public static async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
         {
-            _referenceService ??= new(Program.NavigationManager);
+            // Always create a fresh service so cached failure results from a previous
+            // compile don't permanently hide assemblies that are now loaded.
+            _referenceService = new(Program.NavigationManager);
             string log = "";
 
             // Parse

@@ -37,4 +37,18 @@
     <EmbeddedResource Include="Examples\*.cs" />
   </ItemGroup>
 
+  <!-- Generate BuildInfo.g.cs with the UTC build timestamp into obj/ -->
+  <Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile">
+    <PropertyGroup>
+      <_BuildTimestamp>$([System.DateTime]::UtcNow.ToString("yyyy-MM-dd HH:mm")) UTC</_BuildTimestamp>
+    </PropertyGroup>
+    <WriteLinesToFile
+      File="$(IntermediateOutputPath)BuildInfo.g.cs"
+      Lines="namespace XnaFiddle { public static class BuildInfo { public const string BuildTime = &quot;$(_BuildTimestamp)&quot;%3B } }"
+      Overwrite="true" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)BuildInfo.g.cs" />
+    </ItemGroup>
+  </Target>
+
 </Project>

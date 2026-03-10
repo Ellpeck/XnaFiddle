@@ -2,6 +2,9 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Microsoft.Xna.Framework.Input;
+using MonoGameGum;
+using Gum.Forms;
+using Gum.Forms.Controls;
 
 public class MyGame : Game
 {
@@ -21,6 +24,11 @@ public class MyGame : Game
         graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
+    }
+
+    protected override void Initialize()
+    {
+        base.Initialize();
     }
 
     protected override void LoadContent()
