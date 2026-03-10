@@ -12,6 +12,9 @@ obj/
 *.swp
 *~
 
+## Claude
+.claude/settings.local.json
+
 ## OS
 Thumbs.db
 .DS_Store
