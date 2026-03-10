@@ -66,7 +66,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(new Color(0.05f, 0.05f, 0.1f));
+        GraphicsDevice.Clear(Color.CornflowerBlue);
         spriteBatch.Begin();
 
         int count = trailFilled ? TrailLength : trailIndex;

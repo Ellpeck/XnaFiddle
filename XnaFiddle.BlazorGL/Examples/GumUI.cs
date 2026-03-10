@@ -110,7 +110,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(new Color(0.15f, 0.15f, 0.2f));
+        GraphicsDevice.Clear(Color.CornflowerBlue);
         GumUI.Draw();
         base.Draw(gameTime);
     }

@@ -116,7 +116,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(new Color(18, 18, 28));
+        GraphicsDevice.Clear(Color.CornflowerBlue);
 
         // Pass the camera's view matrix to SpriteBatch — everything drawn
         // between Begin/End will be in world space, automatically transformed

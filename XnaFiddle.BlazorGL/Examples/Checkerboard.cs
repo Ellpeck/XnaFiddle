@@ -40,7 +40,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(Color.Black);
+        GraphicsDevice.Clear(Color.CornflowerBlue);
         spriteBatch.Begin();
 
         int tileSize = 40;

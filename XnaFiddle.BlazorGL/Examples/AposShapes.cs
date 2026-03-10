@@ -39,7 +39,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(new Color(0.1f, 0.1f, 0.15f));
+        GraphicsDevice.Clear(Color.CornflowerBlue);
 
         int w = GraphicsDevice.Viewport.Width;
         int h = GraphicsDevice.Viewport.Height;

@@ -73,7 +73,7 @@ public class MyGame : Game
 
     protected override void Draw(GameTime gameTime)
     {
-        GraphicsDevice.Clear(new Color(0.1f, 0.1f, 0.15f));
+        GraphicsDevice.Clear(Color.CornflowerBlue);
         spriteBatch.Begin();
         spriteBatch.Draw(circle, position - new Vector2(Radius), Color.Cyan);
         spriteBatch.End();

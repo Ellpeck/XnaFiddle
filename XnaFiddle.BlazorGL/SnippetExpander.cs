@@ -47,7 +47,7 @@ namespace XnaFiddle
                 members.Add("GumService GumUI => GumService.Default;");
                 postInitialize.Add("GumUI.Initialize(this, DefaultVisualsVersion.V3);");
                 preUpdate.Add("GumUI.Update(gameTime);");
-                clearColor = "new Color(0.15f, 0.15f, 0.2f)";
+                clearColor = "Color.CornflowerBlue";
                 postDraw.Add("GumUI.Draw();");
             }
 
@@ -59,7 +59,7 @@ namespace XnaFiddle
                 usings.Add("Apos.Shapes");
                 members.Add("ShapeBatch _shapeBatch;");
                 loadContentLines.Add("_shapeBatch = new ShapeBatch(GraphicsDevice, Content);");
-                if (!model.IsGum) clearColor = "new Color(0.1f, 0.1f, 0.15f)";
+                if (!model.IsGum) clearColor = "Color.CornflowerBlue";
                 preDraw.Add("_shapeBatch.Begin();");
                 postDraw.Insert(0, "_shapeBatch.End();"); // before GumUI.Draw if combined
             }
@@ -73,7 +73,7 @@ namespace XnaFiddle
                 usings.Add("MonoGame.Extended");
                 members.Add("SpriteBatch _spriteBatch;");
                 loadContentLines.Add("_spriteBatch = new SpriteBatch(GraphicsDevice);");
-                if (!model.IsGum && !model.IsAposShapes) clearColor = "new Color(18, 18, 28)";
+                if (!model.IsGum && !model.IsAposShapes) clearColor = "Color.CornflowerBlue";
             }
 
             // ── User-supplied extra usings ────────────────────────────────────────
