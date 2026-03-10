@@ -18,7 +18,7 @@ jobs:
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
         with:
@@ -32,7 +32,8 @@ jobs:
         run: dotnet publish XnaFiddle.BlazorGL/XnaFiddle.BlazorGL.csproj -c Release -o output
 
       - name: Add .nojekyll
-        run: touch output/wwwroot/.nojekyll
+        run: New-Item -Path output/wwwroot/.nojekyll -ItemType File -Force
+        shell: pwsh
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
