@@ -87,7 +87,7 @@ namespace XnaFiddle.Pages
                 if (hash.StartsWith("#code="))
                 {
                     await LoadFromCode(hash.Substring(6));
-                    autoCompile = false;
+                    autoCompile = true;
                 }
 
                 if (autoCompile)
