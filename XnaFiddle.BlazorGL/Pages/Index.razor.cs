@@ -204,15 +204,11 @@ namespace XnaFiddle.Pages
 
                     if (gameType != null)
                     {
-                        // Dispose existing game if any
-                        if (_game != null)
-                        {
-                            try { _game.Dispose(); } catch { }
-                            _game = null;
-                        }
+                        // Drop the old game without calling Dispose(). Dispose() invalidates
+                        // the GraphicsDevice textures which breaks Gum on the next run.
+                        // GC will reclaim the old game eventually; this is acceptable in a fiddle context.
+                        _game = null;
 
-                        // Safety: ensure KNI's static BlazorGameWindow registry is clean.
-                        // Dispose may fail to fully clean up in single-threaded WASM.
                         CleanUpGameWindowRegistry();
                         CleanUpGumService();
 
@@ -361,21 +357,24 @@ namespace XnaFiddle.Pages
         {
             try
             {
-                // Clear LoaderManager.Self cached disposables (embedded font textures etc.)
-                // so SystemManagers.Initialize can re-load them without "already contains" errors
-                var loaderManagerType = Type.GetType("RenderingLibrary.Content.LoaderManager, GumCommon");
-                if (loaderManagerType != null)
+                var gumServiceType = Type.GetType("MonoGameGum.GumService, KniGum");
+                if (gumServiceType == null) return;
+                var defaultProp = gumServiceType.GetProperty("Default", BindingFlags.Static | BindingFlags.Public);
+                var gumService = defaultProp?.GetValue(null);
+                if (gumService == null) return;
+
+                // Clear Root, PopupRoot, and ModalRoot children.
+                // These are persistent statics — old controls accumulate across runs without this.
+                foreach (var rootPropName in new[] { "Root", "PopupRoot", "ModalRoot" })
                 {
-                    var selfProp = loaderManagerType.GetProperty("Self", BindingFlags.Static | BindingFlags.Public);
-                    var loaderInstance = selfProp?.GetValue(null);
-                    if (loaderInstance != null)
-                    {
-                        var disposeMethod = loaderManagerType.GetMethod("DisposeAndClear", BindingFlags.Instance | BindingFlags.Public);
-                        disposeMethod?.Invoke(loaderInstance, null);
-                    }
+                    var rootProp = gumServiceType.GetProperty(rootPropName, BindingFlags.Instance | BindingFlags.Public);
+                    var root = rootProp?.GetValue(gumService);
+                    if (root == null) continue;
+                    var childrenProp = root.GetType().GetProperty("Children", BindingFlags.Instance | BindingFlags.Public);
+                    (childrenProp?.GetValue(root) as System.Collections.IList)?.Clear();
                 }
 
-                // Reset SystemManagers.Default to null so GumService.Initialize creates a fresh one
+                // Reset SystemManagers.Default so GumService.Initialize creates a fresh one
                 var systemManagersType = Type.GetType("RenderingLibrary.SystemManagers, GumCommon");
                 if (systemManagersType != null)
                 {
@@ -383,15 +382,22 @@ namespace XnaFiddle.Pages
                     defaultPropSM?.SetValue(null, null);
                 }
 
-                // GumService.Default.IsInitialized has a private setter — reset via reflection
-                // so the next game can call GumService.Initialize() without throwing
-                var type = Type.GetType("MonoGameGum.GumService, KniGum");
-                if (type == null) return;
-                var defaultProp = type.GetProperty("Default", BindingFlags.Static | BindingFlags.Public);
-                var instance = defaultProp?.GetValue(null);
-                if (instance == null) return;
-                var isInitProp = type.GetProperty("IsInitialized", BindingFlags.Instance | BindingFlags.Public);
-                isInitProp?.SetValue(instance, false);
+                // Clear LoaderManager cache WITHOUT disposing textures
+                var loaderManagerType = Type.GetType("RenderingLibrary.Content.LoaderManager, GumCommon");
+                if (loaderManagerType != null)
+                {
+                    var selfProp = loaderManagerType.GetProperty("Self", BindingFlags.Static | BindingFlags.Public);
+                    var loaderInstance = selfProp?.GetValue(null);
+                    if (loaderInstance != null)
+                    {
+                        var cacheField = loaderManagerType.GetField("mCachedDisposables", BindingFlags.Instance | BindingFlags.NonPublic);
+                        (cacheField?.GetValue(loaderInstance) as System.Collections.IDictionary)?.Clear();
+                    }
+                }
+
+                // Reset IsInitialized so the next game can call GumService.Initialize()
+                var isInitProp = gumServiceType.GetProperty("IsInitialized", BindingFlags.Instance | BindingFlags.Public);
+                isInitProp?.SetValue(gumService, false);
             }
             catch { }
         }
