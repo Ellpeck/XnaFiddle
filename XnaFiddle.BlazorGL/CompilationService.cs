@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Threading.Tasks;
+using Microsoft.AspNetCore.Components;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
 using Microsoft.CodeAnalysis.Emit;
@@ -12,9 +13,15 @@ using MetadataReferenceService.BlazorWasm;
 
 namespace XnaFiddle
 {
-    public static class CompilationService
+    public class CompilationService
     {
-        private static BlazorWasmMetadataReferenceService _referenceService;
+        private readonly NavigationManager _navigationManager;
+        private BlazorWasmMetadataReferenceService _referenceService;
+
+        public CompilationService(NavigationManager navigationManager)
+        {
+            _navigationManager = navigationManager;
+        }
 
         // KNI assemblies that exist in _framework/ but may not be loaded into the AppDomain
         // yet due to lazy loading (no game is running when the user first compiles).
@@ -67,11 +74,11 @@ namespace XnaFiddle
             public List<string> FailedAssemblies { get; set; } = [];
         }
 
-        public static async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
+        public async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
         {
             // Always create a fresh service so cached failure results from a previous
             // compile don't permanently hide assemblies that are now loaded.
-            _referenceService = new(Program.NavigationManager);
+            _referenceService = new(_navigationManager);
             string log = "";
 
             // Parse

@@ -73,9 +73,16 @@ namespace XnaFiddle.Pages
                 await JsRuntime.InvokeAsync<object>("initRenderJS", dotNetRef);
                 await JsRuntime.InvokeVoidAsync("fileDropInterop.init", dotNetRef);
 
-                // Check ?example= query param first, then #code= hash (hash wins)
+                // ?example= and ?gist= use query strings — values are short and it's conventional
+                // for named resources to appear as query params rather than fragments.
+                // #code= and #snippet= use the URL fragment (#) for two reasons:
+                //   1. Fragments are never sent to the server — the static host only ever sees "/",
+                //      so large payloads stay entirely in the browser.
+                //   2. Query strings have server/proxy length limits (often 2-8 KB); fragments do not,
+                //      which matters for #code= which can contain a full compressed source file.
                 string search = await JsRuntime.InvokeAsync<string>("eval", "window.location.search");
                 string exampleFromQuery = UrlCodec.ParseQueryParam(search, "example");
+                string gistFromQuery = UrlCodec.ParseQueryParam(search, "gist");
                 bool autoCompile = false;
                 if (!string.IsNullOrEmpty(exampleFromQuery))
                 {
@@ -86,6 +93,11 @@ namespace XnaFiddle.Pages
                         _selectedExample = exampleFromQuery;
                         autoCompile = true;
                     }
+                }
+                else if (!string.IsNullOrEmpty(gistFromQuery))
+                {
+                    bool loaded = await LoadFromGistId(gistFromQuery);
+                    autoCompile = loaded;
                 }
 
                 string hash = await JsRuntime.InvokeAsync<string>("eval", "window.location.hash");
@@ -98,11 +110,6 @@ namespace XnaFiddle.Pages
                 {
                     await LoadFromCode(hash.Substring(6));
                     autoCompile = true;
-                }
-                else if (hash.StartsWith("#gist="))
-                {
-                    bool loaded = await LoadFromGistId(hash.Substring(6));
-                    autoCompile = loaded;
                 }
 
                 if (autoCompile)
@@ -251,7 +258,7 @@ namespace XnaFiddle.Pages
             {
                 string sourceCode = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
                 await JsRuntime.InvokeVoidAsync("compileTimerInterop.start");
-                CompilationService.CompilationResult result = await CompilationService.CompileAsync(sourceCode, (current, total) =>
+                CompilationService.CompilationResult result = await Compiler.CompileAsync(sourceCode, (current, total) =>
                 {
                     _compileProgress = current;
                     _compileTotal = total;
@@ -504,7 +511,7 @@ namespace XnaFiddle.Pages
                     await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", code);
 
                 await JsRuntime.InvokeVoidAsync("eval",
-                    $"history.replaceState(null,'','#gist={Uri.EscapeDataString(gistId)}')");
+                    $"history.replaceState(null,'','?gist={Uri.EscapeDataString(gistId)}')");
 
                 _statusMessage = "Gist loaded.";
                 _statusColor = "#4ec9b0";

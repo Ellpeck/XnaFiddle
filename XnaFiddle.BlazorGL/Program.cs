@@ -1,7 +1,6 @@
 using System;
 using System.Net.Http;
 using System.Threading.Tasks;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -9,8 +8,6 @@ namespace XnaFiddle
 {
     internal class Program
     {
-        public static NavigationManager NavigationManager { get; set; }
-
         private static async Task Main(string[] args)
         {
             // Touch one type from each optional package so Blazor WASM loads their
@@ -27,8 +24,7 @@ namespace XnaFiddle
             {
                 BaseAddress = new Uri(builder.HostEnvironment.BaseAddress)
             });
-
-            NavigationManager = builder.Services.BuildServiceProvider().GetRequiredService<NavigationManager>();
+            builder.Services.AddSingleton<CompilationService>();
 
             await builder.Build().RunAsync();
         }
