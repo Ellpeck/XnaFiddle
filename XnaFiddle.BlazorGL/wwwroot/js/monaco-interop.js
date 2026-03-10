@@ -286,6 +286,29 @@ window.monacoInterop = {
     }
 };
 
+// Compile timer — updates #compileTimer directly so it runs during synchronous .NET work
+window.compileTimerInterop = {
+    _interval: null,
+    _startTime: null,
+
+    start: function () {
+        this._startTime = Date.now();
+        clearInterval(this._interval);
+        this._interval = setInterval(function () {
+            var el = document.getElementById('compileTimer');
+            if (el) {
+                var secs = (Date.now() - window.compileTimerInterop._startTime) / 1000;
+                el.textContent = secs.toFixed(1) + 's';
+            }
+        }, 100);
+    },
+
+    stop: function () {
+        clearInterval(this._interval);
+        this._interval = null;
+    }
+};
+
 // Drag-and-drop file upload (images → .NET interop)
 window.fileDropInterop = {
     _dotNetRef: null,
@@ -317,7 +340,6 @@ window.fileDropInterop = {
                     if (!file.type.startsWith('image/')) return;
                     var reader = new FileReader();
                     reader.onload = function () {
-                        // Blazor expects byte[] as base64
                         var base64 = reader.result.split(',')[1];
                         window.fileDropInterop._dotNetRef.invokeMethodAsync('OnFileDropped', file.name, base64);
                     };

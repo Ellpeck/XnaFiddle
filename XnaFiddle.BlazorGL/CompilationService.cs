@@ -66,7 +66,7 @@ namespace XnaFiddle
             public List<DiagnosticInfo> Diagnostics { get; set; } = [];
         }
 
-        public static async Task<CompilationResult> CompileAsync(string sourceCode)
+        public static async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
         {
             _referenceService ??= new(Program.NavigationManager);
             string log = "";
@@ -96,6 +96,8 @@ namespace XnaFiddle
             // Fetch metadata references
             List<MetadataReference> metadataReferences = [];
             int failedCount = 0;
+            int resolved = 0;
+            int total = assembliesRequired.Count;
 
             foreach (string assemblyName in assembliesRequired)
             {
@@ -112,6 +114,7 @@ namespace XnaFiddle
                 {
                     failedCount++;
                 }
+                onProgress?.Invoke(++resolved, total);
             }
 
             log += "Resolved " + metadataReferences.Count + "/" + assembliesRequired.Count + " assembly references.\n";

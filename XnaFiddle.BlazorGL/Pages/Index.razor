@@ -16,8 +16,9 @@
 
     <div style="padding: 6px 12px; background: #2d2d2d; display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
         <button @onclick="CompileAndRun" disabled="@_isCompiling"
-                style="padding: 4px 16px; background: #0e639c; color: white; border: none; cursor: pointer; font-size: 13px;">
-            @(_isCompiling ? "Compiling..." : "Compile & Run")
+                style="padding: 4px 14px; background: #0e639c; color: white; border: none; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+            <i class="codicon @(_isCompiling ? "codicon-loading codicon-modifier-spin" : "codicon-play")"></i>
+            @(_isCompiling ? "Running..." : "Run")
         </button>
         <select @onchange="OnExampleSelected"
                 style="padding: 3px 8px; background: #3c3c3c; color: #d4d4d4; border: 1px solid #555;
@@ -28,16 +29,59 @@
                 <option value="@name">@name</option>
             }
         </select>
+        <button @onclick="ShareAsCode"
+                style="padding: 4px 10px; background: #3c3c3c; color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+            <i class="codicon codicon-link-external"></i> Share
+        </button>
         <button @onclick="() => _assetsOpen = !_assetsOpen"
                 style="padding: 4px 10px; background: @(_assets.Count > 0 ? "#2d5a2d" : "#3c3c3c"); color: #d4d4d4;
-                       border: 1px solid #555; cursor: pointer; font-size: 13px;">
-            Assets@(_assets.Count > 0 ? $" ({_assets.Count})" : "")
+                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+            <i class="codicon codicon-file-media"></i> Assets@(_assets.Count > 0 ? $" ({_assets.Count})" : "")
+        </button>
+        <button @onclick="ToggleRunLocally"
+                style="padding: 4px 10px; background: #3c3c3c; color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
+            <i class="codicon codicon-desktop-download"></i> Run Locally
         </button>
         @if (!string.IsNullOrEmpty(_statusMessage))
         {
             <span style="color: @_statusColor; font-size: 13px;">@_statusMessage</span>
         }
     </div>
+
+    @if (_isCompiling)
+    {
+        var assemblyDone = _compileTotal > 0 && _compileProgress >= _compileTotal;
+        var pct = assemblyDone ? 100 : (_compileTotal > 0 ? (90 * _compileProgress / _compileTotal) : 0);
+        var barTransition = assemblyDone ? "width 4s ease-in" : "none";
+        var elapsed = (DateTime.Now - _compileStartTime).TotalSeconds;
+        <div style="height: 3px; background: #1a1a1a; flex-shrink: 0;">
+            <div style="height: 100%; width: @(pct)%; background: #007acc; transition: @barTransition; position: relative; overflow: hidden;">
+                <div style="position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+                            background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+                            animation: compileshimmer 1.5s infinite linear; will-change: transform;"></div>
+            </div>
+        </div>
+        <div style="padding: 2px 12px; background: #252526; font-size: 11px; color: #888; flex-shrink: 0;">
+            @if (assemblyDone)
+            {
+                <text>Compiling... &nbsp;·&nbsp; <span id="compileTimer">0.0s</span></text>
+            }
+            else if (_compileTotal > 0)
+            {
+                <text>Resolving assemblies @_compileProgress / @_compileTotal &nbsp;·&nbsp; <span id="compileTimer">0.0s</span></text>
+            }
+            else
+            {
+                <text>Starting... &nbsp;·&nbsp; <span id="compileTimer">0.0s</span></text>
+            }
+            @if (!_hasCompiledOnce)
+            {
+                <text> &nbsp;·&nbsp; <span style="color: #666;">first compile takes longer</span></text>
+            }
+        </div>
+    }
 
     @if (_assetsOpen)
     {
@@ -71,7 +115,54 @@
         </div>
     }
 
-    <div id="monacoContainer" style="flex: 1; width: 100%; min-height: 0; overflow: hidden;"></div>
+    @if (_runLocallyOpen)
+    {
+        <div style="background: #252526; border-bottom: 1px solid #333; flex-shrink: 0; font-size: 12px; color: #d4d4d4;">
+            <div style="padding: 5px 12px; color: #aaa; border-bottom: 1px solid #2e2e2e;">
+                @if (_runLocallyPackages.Count == 0)
+                {
+                    <text>Copy this code into your game's <span style="color: #9cdcfe;">.cs</span> file. No extra NuGet packages are needed.</text>
+                }
+                else
+                {
+                    <text>Copy this code into your game's <span style="color: #9cdcfe;">.cs</span> file, then add the following NuGet packages to your project.
+                    <span style="color: #dcdcaa;">Yellow = KNI</span> &nbsp;·&nbsp; <span style="color: #9cdcfe;">Blue = MonoGame</span> &nbsp;·&nbsp; Click a package to copy the <span style="color: #9cdcfe;">dotnet add package</span> command.</text>
+                }
+            </div>
+            @if (_runLocallyPackages.Count > 0)
+            {
+                <div style="padding: 5px 12px; display: flex; flex-wrap: wrap; align-items: center; gap: 8px;">
+                    @foreach (var pkg in _runLocallyPackages)
+                    {
+                        var kniCmd = "dotnet add package " + pkg.KniPackage;
+                        var mgCmd  = "dotnet add package " + pkg.MonoGamePackage;
+                        <span style="display: inline-flex; align-items: center; gap: 5px;">
+                            <span style="color: #888;">@pkg.Feature:</span>
+                            <span @onclick="() => CopyToClipboard(kniCmd)"
+                                  style="color: #dcdcaa; cursor: pointer; background: #3c3c3c; padding: 1px 6px; border-radius: 3px;"
+                                  title="KNI — click to copy command">@pkg.KniPackage</span>
+                            <span style="color: #555;">or</span>
+                            <span @onclick="() => CopyToClipboard(mgCmd)"
+                                  style="color: #9cdcfe; cursor: pointer; background: #3c3c3c; padding: 1px 6px; border-radius: 3px;"
+                                  title="MonoGame — click to copy command">@pkg.MonoGamePackage</span>
+                        </span>
+                    }
+                </div>
+            }
+        </div>
+    }
+
+    <div style="flex: 1; min-height: 0; position: relative; overflow: hidden;">
+        <div id="monacoContainer" style="width: 100%; height: 100%;"></div>
+        <button @onclick="CopyEditorContent" title="Copy code"
+                style="position: absolute; top: 6px; right: 20px; z-index: 5;
+                       background: #2d2d2d; color: #888; border: 1px solid #444;
+                       border-radius: 3px; padding: 3px 6px; cursor: pointer; font-size: 14px;
+                       opacity: 0.7; transition: opacity 0.15s;"
+                onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.7'">
+            <i class="codicon codicon-copy"></i>
+        </button>
+    </div>
 
     @if (!string.IsNullOrEmpty(_diagnosticsOutput))
     {
@@ -100,4 +191,14 @@
     bottom: 0;
     left: calc(45vw + 2px);">
     <canvas id="theCanvas" style="touch-action:none;"></canvas>
+    @if (_game == null && !_isCompiling)
+    {
+        <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">
+            <div style="text-align: center; color: #888; font-family: 'Segoe UI', sans-serif; font-size: 15px; line-height: 1.8; user-select: none;">
+                <div style="font-size: 22px; color: #aaa; margin-bottom: 12px;">Welcome to XnaFiddle</div>
+                Pick an example from the dropdown and click <span style="color: #9cdcfe;">Compile &amp; Run</span><br/>
+                or write your own XNA-style C# code and compile.
+            </div>
+        </div>
+    }
 </div>

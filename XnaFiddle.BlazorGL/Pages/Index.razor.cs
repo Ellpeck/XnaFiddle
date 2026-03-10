@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.IO.Compression;
 using System.Reflection;
+using System.Text;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.JSInterop;
@@ -20,6 +22,11 @@ namespace XnaFiddle.Pages
         bool _pendingCompile;
         bool _monacoReady;
         bool _assetsOpen;
+        bool _runLocallyOpen;
+        int _compileProgress;
+        int _compileTotal;
+        DateTime _compileStartTime;
+        bool _hasCompiledOnce;
 
         struct AssetInfo
         {
@@ -27,6 +34,22 @@ namespace XnaFiddle.Pages
             public int Size;
         }
 
+        struct PackageInfo
+        {
+            public string Feature;
+            public string KniPackage;
+            public string MonoGamePackage;
+            public string DetectionString;
+        }
+
+        static readonly PackageInfo[] KnownPackages =
+        [
+            new PackageInfo { Feature = "Gum UI",         KniPackage = "Gum.KNI",          MonoGamePackage = "Gum.MonoGame",   DetectionString = "MonoGameGum" },
+            new PackageInfo { Feature = "Shapes",          KniPackage = "Apos.Shapes.KNI",  MonoGamePackage = "Apos.Shapes",    DetectionString = "Apos.Shapes" },
+            new PackageInfo { Feature = "FontStashSharp",  KniPackage = "FontStashSharp.Kni", MonoGamePackage = "FontStashSharp", DetectionString = "FontStashSharp" },
+        ];
+
+        List<PackageInfo> _runLocallyPackages = new();
         List<AssetInfo> _assets = new();
 
         protected override async void OnAfterRender(bool firstRender)
@@ -41,7 +64,12 @@ namespace XnaFiddle.Pages
                 var dotNetRef = DotNetObjectReference.Create(this);
                 await JsRuntime.InvokeAsync<object>("initRenderJS", dotNetRef);
                 await JsRuntime.InvokeVoidAsync("fileDropInterop.init", dotNetRef);
+
+                string hash = await JsRuntime.InvokeAsync<string>("eval", "window.location.hash");
+                if (hash.StartsWith("#code="))
+                    await LoadFromCode(hash.Substring(6));
             }
+
         }
 
         [JSInvokable]
@@ -58,6 +86,13 @@ namespace XnaFiddle.Pages
             _statusMessage = "Loaded: " + fileName;
             _statusColor = "#4ec9b0";
             StateHasChanged();
+        }
+
+        private async Task CopyEditorContent()
+        {
+            if (!_monacoReady) return;
+            string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
+            await CopyToClipboard(code);
         }
 
         private async Task CopyToClipboard(string text)
@@ -126,6 +161,9 @@ namespace XnaFiddle.Pages
             _diagnosticsOutput = "";
             _statusMessage = "Compiling...";
             _statusColor = "#dcdcaa";
+            _compileProgress = 0;
+            _compileTotal = 0;
+            _compileStartTime = DateTime.Now;
             StateHasChanged();
         }
 
@@ -134,7 +172,15 @@ namespace XnaFiddle.Pages
             try
             {
                 string sourceCode = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
-                CompilationService.CompilationResult result = await CompilationService.CompileAsync(sourceCode);
+                await JsRuntime.InvokeVoidAsync("compileTimerInterop.start");
+                CompilationService.CompilationResult result = await CompilationService.CompileAsync(sourceCode, (current, total) =>
+                {
+                    _compileProgress = current;
+                    _compileTotal = total;
+                    StateHasChanged();
+                });
+                await JsRuntime.InvokeVoidAsync("compileTimerInterop.stop");
+                _hasCompiledOnce = true;
                 _diagnosticsOutput = result.Log;
 
                 // Send diagnostics to Monaco as inline markers
@@ -168,6 +214,7 @@ namespace XnaFiddle.Pages
                         // Safety: ensure KNI's static BlazorGameWindow registry is clean.
                         // Dispose may fail to fully clean up in single-threaded WASM.
                         CleanUpGameWindowRegistry();
+                        CleanUpGumService();
 
                         Game newGame = (Game)Activator.CreateInstance(gameType);
                         newGame.Content = new InMemoryContentManager(newGame.Services);
@@ -208,6 +255,90 @@ namespace XnaFiddle.Pages
             StateHasChanged();
         }
 
+        private async Task ShareAsCode()
+        {
+            try
+            {
+                string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
+
+                using var output = new MemoryStream();
+                using (var gzip = new GZipStream(output, CompressionLevel.Optimal))
+                {
+                    byte[] bytes = Encoding.UTF8.GetBytes(code);
+                    gzip.Write(bytes, 0, bytes.Length);
+                }
+                string encoded = Convert.ToBase64String(output.ToArray())
+                    .Replace('+', '-').Replace('/', '_').TrimEnd('=');
+
+                string shareUrl = "https://xnafiddle.net/#code=" + encoded;
+                await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#code={encoded}')");
+                await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareUrl);
+
+                _statusMessage = "Link copied!";
+                _statusColor = "#4ec9b0";
+            }
+            catch (Exception e)
+            {
+                _statusMessage = "Share failed.";
+                _statusColor = "#f48771";
+                _diagnosticsOutput = e.Message;
+            }
+
+            StateHasChanged();
+        }
+
+        private async Task LoadFromCode(string encoded)
+        {
+            try
+            {
+                // Restore standard base64 padding
+                string base64 = encoded.Replace('-', '+').Replace('_', '/')
+                    + new string('=', (4 - encoded.Length % 4) % 4);
+                byte[] compressed = Convert.FromBase64String(base64);
+
+                using var input = new MemoryStream(compressed);
+                using var gzip = new GZipStream(input, CompressionMode.Decompress);
+                using var reader = new StreamReader(gzip, Encoding.UTF8);
+                string code = reader.ReadToEnd();
+
+                if (_monacoReady)
+                    await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", code);
+
+                _statusMessage = "Loaded from link.";
+                _statusColor = "#4ec9b0";
+            }
+            catch (Exception e)
+            {
+                _statusMessage = "Failed to load from link.";
+                _statusColor = "#f48771";
+                _diagnosticsOutput = e.Message;
+            }
+
+            StateHasChanged();
+        }
+
+        private async Task ToggleRunLocally()
+        {
+            _runLocallyOpen = !_runLocallyOpen;
+            if (_runLocallyOpen)
+            {
+                string code = _monacoReady
+                    ? await JsRuntime.InvokeAsync<string>("monacoInterop.getValue")
+                    : "";
+                RefreshRunLocallyPackages(code);
+            }
+        }
+
+        private void RefreshRunLocallyPackages(string code)
+        {
+            _runLocallyPackages.Clear();
+            foreach (var pkg in KnownPackages)
+            {
+                if (code.Contains(pkg.DetectionString))
+                    _runLocallyPackages.Add(pkg);
+            }
+        }
+
         private async Task OnExampleSelected(ChangeEventArgs e)
         {
             string name = e.Value?.ToString();
@@ -216,7 +347,53 @@ namespace XnaFiddle.Pages
 
             string code = ExampleGallery.Load(name);
             if (code != null)
+            {
                 await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", code);
+                if (_runLocallyOpen)
+                {
+                    RefreshRunLocallyPackages(code);
+                    StateHasChanged();
+                }
+            }
+        }
+
+        private static void CleanUpGumService()
+        {
+            try
+            {
+                // Clear LoaderManager.Self cached disposables (embedded font textures etc.)
+                // so SystemManagers.Initialize can re-load them without "already contains" errors
+                var loaderManagerType = Type.GetType("RenderingLibrary.Content.LoaderManager, GumCommon");
+                if (loaderManagerType != null)
+                {
+                    var selfProp = loaderManagerType.GetProperty("Self", BindingFlags.Static | BindingFlags.Public);
+                    var loaderInstance = selfProp?.GetValue(null);
+                    if (loaderInstance != null)
+                    {
+                        var disposeMethod = loaderManagerType.GetMethod("DisposeAndClear", BindingFlags.Instance | BindingFlags.Public);
+                        disposeMethod?.Invoke(loaderInstance, null);
+                    }
+                }
+
+                // Reset SystemManagers.Default to null so GumService.Initialize creates a fresh one
+                var systemManagersType = Type.GetType("RenderingLibrary.SystemManagers, GumCommon");
+                if (systemManagersType != null)
+                {
+                    var defaultPropSM = systemManagersType.GetProperty("Default", BindingFlags.Static | BindingFlags.Public);
+                    defaultPropSM?.SetValue(null, null);
+                }
+
+                // GumService.Default.IsInitialized has a private setter — reset via reflection
+                // so the next game can call GumService.Initialize() without throwing
+                var type = Type.GetType("MonoGameGum.GumService, KniGum");
+                if (type == null) return;
+                var defaultProp = type.GetProperty("Default", BindingFlags.Static | BindingFlags.Public);
+                var instance = defaultProp?.GetValue(null);
+                if (instance == null) return;
+                var isInitProp = type.GetProperty("IsInitialized", BindingFlags.Instance | BindingFlags.Public);
+                isInitProp?.SetValue(instance, false);
+            }
+            catch { }
         }
 
         private static void CleanUpGameWindowRegistry()
