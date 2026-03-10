@@ -40,7 +40,7 @@
                        border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
             <i class="codicon codicon-file-media"></i> Assets@(_assets.Count > 0 ? $" ({_assets.Count})" : "")
         </button>
-        <button @onclick="() => _gistOpen = !_gistOpen"
+        <button @onclick="() => { _gistOpen = !_gistOpen; if (!_gistOpen) _gistCodeCopied = false; }"
                 style="padding: 4px 10px; background: @(_gistOpen ? "#0e639c" : "#3c3c3c"); color: #d4d4d4;
                        border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
             <i class="codicon codicon-github"></i> Gist
@@ -135,19 +135,37 @@
     @if (_gistOpen)
     {
         <div style="background: #252526; border-bottom: 1px solid #333; flex-shrink: 0;">
-            <div style="padding: 4px 12px 2px; color: #888; font-size: 12px;">
-                Paste a Gist URL or ID below, or link directly to XnaFiddle with
-                <span @onclick='() => CopyToClipboard("https://xnafiddle.net/#gist=<gist-id>")'
-                      title="Click to copy"
-                      style="color: #9cdcfe; font-family: Consolas, monospace; cursor: pointer; user-select: text;">https://xnafiddle.net/#gist=&lt;gist-id&gt;</span>
+            <div style="padding: 6px 12px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="color: #6a9955; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Export to Gist</div>
+                @if (!_gistCodeCopied)
+                {
+                    <div style="color: #888; font-size: 12px; line-height: 1.6;">
+                        This will copy your code to the clipboard and open <b style="color: #d4d4d4;">gist.github.com</b> in a new tab.
+                        Paste your code there, create the gist, then come back and paste the URL below to link it.
+                    </div>
+                    <button @onclick="OpenGistSite"
+                            style="padding: 4px 14px; background: #3c3c3c; color: #d4d4d4; border: 1px solid #555;
+                                   cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px; align-self: flex-start;">
+                        <i class="codicon codicon-github"></i> Copy code to clipboard &amp; open gist.github.com
+                    </button>
+                }
+                else
+                {
+                    <div style="color: #888; font-size: 12px; line-height: 1.6;">
+                        Code copied! Paste it into gist.github.com, create the gist, then copy the URL from your browser and paste it in the Import box below.
+                    </div>
+                }
             </div>
-            <div style="padding: 3px 12px 5px; display: flex; align-items: center; gap: 6px;">
-                <input @bind="_gistInput" @onkeydown="OnGistInputKeyDown" placeholder="https://gist.github.com/user/abc123  or  abc123"
-                       style="flex: 1; padding: 3px 8px; background: #3c3c3c; color: #d4d4d4;
-                              border: 1px solid #555; font-size: 13px; font-family: Consolas, monospace;" />
-                <button @onclick="LoadGistFromInput" disabled="@_isCompiling"
-                        style="padding: 3px 12px; background: #0e639c; color: white; border: none;
-                               cursor: pointer; font-size: 13px;">Load &amp; Run</button>
+            <div style="border-top: 1px solid #333; padding: 6px 12px; display: flex; flex-direction: column; gap: 6px;">
+                <div style="color: #9cdcfe; font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em;">Import from Gist</div>
+                <div style="display: flex; align-items: center; gap: 6px;">
+                    <input @bind="_gistInput" @onkeydown="OnGistInputKeyDown" placeholder="https://gist.github.com/user/abc123  or  abc123"
+                           style="flex: 1; padding: 3px 8px; background: #3c3c3c; color: #d4d4d4;
+                                  border: 1px solid #555; font-size: 13px; font-family: Consolas, monospace;" />
+                    <button @onclick="LoadGistFromInput" disabled="@_isCompiling"
+                            style="padding: 3px 12px; background: #0e639c; color: white; border: none;
+                                   cursor: pointer; font-size: 13px; white-space: nowrap;">@(_gistCodeCopied ? "Verify & Link" : "Load & Run")</button>
+                </div>
             </div>
         </div>
     }

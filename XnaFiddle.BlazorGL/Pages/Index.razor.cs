@@ -25,6 +25,7 @@ namespace XnaFiddle.Pages
         bool _monacoReady;
         bool _assetsOpen;
         bool _gistOpen;
+        bool _gistCodeCopied;
         bool _runLocallyOpen;
         string _gistInput = "";
         int _compileProgress;
@@ -397,6 +398,26 @@ namespace XnaFiddle.Pages
             catch (Exception e)
             {
                 _statusMessage = "Failed to load from link.";
+                _statusColor = "#f48771";
+                _diagnosticsOutput = e.Message;
+            }
+
+            StateHasChanged();
+        }
+
+        private async Task OpenGistSite()
+        {
+            try
+            {
+                string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
+                await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", code);
+                await JsRuntime.InvokeVoidAsync("eval", "window.open('https://gist.github.com/new', '_blank')");
+                _gistCodeCopied = true;
+                _gistInput = "";
+            }
+            catch (Exception e)
+            {
+                _statusMessage = "Failed to open gist site.";
                 _statusColor = "#f48771";
                 _diagnosticsOutput = e.Message;
             }
