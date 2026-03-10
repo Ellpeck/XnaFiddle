@@ -169,9 +169,19 @@ namespace XnaFiddle.Pages
                         // Dispose may fail to fully clean up in single-threaded WASM.
                         CleanUpGameWindowRegistry();
 
-                        _game = (Game)Activator.CreateInstance(gameType);
-                        _game.Content = new InMemoryContentManager(_game.Services);
-                        _game.Run();
+                        Game newGame = (Game)Activator.CreateInstance(gameType);
+                        newGame.Content = new InMemoryContentManager(newGame.Services);
+                        try
+                        {
+                            newGame.Run();
+                        }
+                        catch (Exception runEx)
+                        {
+                            try { newGame.Dispose(); } catch { }
+                            CleanUpGameWindowRegistry();
+                            throw new Exception("Game crashed during initialization: " + runEx.Message, runEx);
+                        }
+                        _game = newGame;
                         _statusMessage = "Running.";
                         _statusColor = "#4ec9b0";
                     }

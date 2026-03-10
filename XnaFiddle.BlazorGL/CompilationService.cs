@@ -42,6 +42,10 @@ namespace XnaFiddle
             "GumCommon",
             "FlatRedBall.InterpolationCore",
             "TextCopy",
+            "Apos.Shapes.KNI",
+            "FontStashSharp.Kni",
+            "FontStashSharp.Base",
+            "KNI.Extended",
         ];
 
         public class DiagnosticInfo
