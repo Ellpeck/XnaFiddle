@@ -27,6 +27,7 @@ namespace XnaFiddle.Pages
         bool _gistOpen;
         bool _gistCodeCopied;
         bool _runLocallyOpen;
+        bool _layoutVertical;
         string _gistInput = "";
         int _compileProgress;
         int _compileTotal;
@@ -195,6 +196,18 @@ namespace XnaFiddle.Pages
         }
 
         [JSInvokable]
+        public void OnGameTimedOut(double frameMs)
+        {
+            _game = null;
+            int seconds = (int)(frameMs / 1000);
+            _diagnosticsOutput = $"Game stopped: a frame blocked for {seconds}s. Check for infinite loops or excessive work in Update/Draw.";
+            _diagnosticsColor = "#f48771";
+            _statusMessage = "Stopped (frame timeout).";
+            _statusColor = "#f48771";
+            StateHasChanged();
+        }
+
+        [JSInvokable]
         public void OnCanvasResized(int width, int height)
         {
             if (_game == null)
@@ -270,7 +283,8 @@ namespace XnaFiddle.Pages
                 string failedNote = result.FailedAssemblies.Count > 0
                     ? $"\n[missing refs: {string.Join(", ", result.FailedAssemblies)}]"
                     : "";
-                _diagnosticsOutput = $"Compiled in {compileSeconds:0.0}s" + failedNote +
+                string versionNote = string.IsNullOrEmpty(result.VersionInfo) ? "" : $"\n{result.VersionInfo}";
+                _diagnosticsOutput = $"Compiled in {compileSeconds:0.0}s" + failedNote + versionNote +
                     (string.IsNullOrEmpty(result.Log) ? "" : "\n" + result.Log);
                 _diagnosticsColor = result.Success ? "#888" : "#f48771";
 
@@ -539,6 +553,12 @@ namespace XnaFiddle.Pages
                     : "";
                 RefreshRunLocallyPackages(code);
             }
+        }
+
+        private async Task ToggleLayout()
+        {
+            _layoutVertical = !_layoutVertical;
+            await JsRuntime.InvokeVoidAsync("setLayoutMode", _layoutVertical);
         }
 
         private void RefreshRunLocallyPackages(string code)

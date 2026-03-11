@@ -71,6 +71,11 @@
     <script src="js/monaco-interop.js"></script>
 
     <script>
+        // Watchdog: if a single game frame blocks JS for longer than this, the game
+        // is considered hung (infinite loop, extreme busy-wait, etc.) and is stopped.
+        // 5 seconds is intentionally lenient to allow slow Initialize()/LoadContent().
+        var WATCHDOG_FRAME_MS = 5000;
+
         function tickJS() {
             // Sync canvas drawing buffer to its container each frame
             var canvas = document.getElementById('theCanvas');
@@ -85,15 +90,27 @@
                     window.theInstance.invokeMethod('OnCanvasResized', w, h);
                 }
             }
+
+            var tickStart = performance.now();
             window.theInstance.invokeMethod('TickDotNet');
+            var tickMs = performance.now() - tickStart;
+
+            if (tickMs > WATCHDOG_FRAME_MS) {
+                // Frame took too long — game is likely stuck in a busy-loop.
+                // Notify .NET to stop the game, then continue the rAF loop so the
+                // UI remains responsive (future ticks will see _game == null and return fast).
+                window.theInstance.invokeMethod('OnGameTimedOut', tickMs);
+            }
+
             window.requestAnimationFrame(tickJS);
         }
 
-        // Splitter + layout logic (left/right, ratio-based)
+        // Splitter + layout logic (supports left/right and top/bottom modes)
         (function () {
-            var splitRatio = 0.45; // fraction of viewport width for editor
+            var splitRatio = 0.45;
             var dragging = false;
-            var splitterW = 5;
+            var splitterSize = 5;
+            var isVertical = false;
 
             function applyLayout() {
                 var panel = document.getElementById('editorPanel');
@@ -101,11 +118,37 @@
                 var holder = document.getElementById('canvasHolder');
                 if (!panel || !spl || !holder) return;
 
-                var w = window.innerWidth;
-                var x = Math.round(splitRatio * w);
-                panel.style.width = x + 'px';
-                spl.style.left = x + 'px';
-                holder.style.left = (x + splitterW) + 'px';
+                if (isVertical) {
+                    var h = window.innerHeight;
+                    var y = Math.round(splitRatio * h);
+                    panel.style.width = '100%';
+                    panel.style.height = y + 'px';
+                    panel.style.bottom = '';
+                    panel.style.right = '0';
+                    spl.style.top = y + 'px';
+                    spl.style.left = '0';
+                    spl.style.width = '100%';
+                    spl.style.height = splitterSize + 'px';
+                    spl.style.cursor = 'ns-resize';
+                    holder.style.top = (y + splitterSize) + 'px';
+                    holder.style.left = '0';
+                    holder.style.right = '0';
+                } else {
+                    var w = window.innerWidth;
+                    var x = Math.round(splitRatio * w);
+                    panel.style.width = x + 'px';
+                    panel.style.height = '';
+                    panel.style.bottom = '0';
+                    panel.style.right = '';
+                    spl.style.left = x + 'px';
+                    spl.style.top = '0';
+                    spl.style.width = splitterSize + 'px';
+                    spl.style.height = '100vh';
+                    spl.style.cursor = 'ew-resize';
+                    holder.style.left = (x + splitterSize) + 'px';
+                    holder.style.top = '0';
+                    holder.style.right = '0';
+                }
             }
 
             function initSplitter() {
@@ -115,15 +158,21 @@
                 spl.addEventListener('mousedown', function (e) {
                     e.preventDefault();
                     dragging = true;
-                    document.body.style.cursor = 'ew-resize';
+                    document.body.style.cursor = isVertical ? 'ns-resize' : 'ew-resize';
                     document.body.style.userSelect = 'none';
                 });
 
                 document.addEventListener('mousemove', function (e) {
                     if (!dragging) return;
-                    var w = window.innerWidth;
-                    var x = Math.max(200, Math.min(e.clientX, w - 200));
-                    splitRatio = x / w;
+                    if (isVertical) {
+                        var h = window.innerHeight;
+                        var y = Math.max(100, Math.min(e.clientY, h - 100));
+                        splitRatio = y / h;
+                    } else {
+                        var w = window.innerWidth;
+                        var x = Math.max(200, Math.min(e.clientX, w - 200));
+                        splitRatio = x / w;
+                    }
                     applyLayout();
                 });
 
@@ -135,10 +184,14 @@
                 });
 
                 window.addEventListener('resize', applyLayout);
-
-                // Apply pixel positions immediately (replaces CSS calc values)
                 applyLayout();
             }
+
+            window.setLayoutMode = function (vertical) {
+                isVertical = vertical;
+                splitRatio = 0.45;
+                applyLayout();
+            };
 
             var observer = new MutationObserver(function () {
                 if (document.getElementById('splitter')) {

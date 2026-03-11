@@ -72,6 +72,7 @@ namespace XnaFiddle
             public bool Success { get; set; }
             public List<DiagnosticInfo> Diagnostics { get; set; } = [];
             public List<string> FailedAssemblies { get; set; } = [];
+            public string VersionInfo { get; set; }
         }
 
         public async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
@@ -98,11 +99,25 @@ namespace XnaFiddle
                 catch { /* already loaded, or genuinely absent — handled below */ }
             }
 
+            // Collect library version info for display in the diagnostics panel
+            (string Label, string AsmName)[] versionTargets =
+            [
+                ("KNI",              "Kni.Platform"),
+                ("Gum",              "KniGum"),
+                ("MG.Extended",      "KNI.Extended"),
+                ("Apos.Shapes",      "Apos.Shapes.KNI"),
+            ];
+            string versionInfo = string.Join("  ·  ",
+                versionTargets.Select(t => $"{t.Label} {GetAssemblyVersion(t.AsmName)}"));
+
             // Collect assembly names from loaded assemblies + known KNI assemblies
             HashSet<string> assembliesRequired = [];
             Assembly[] loadedAssemblies = AppDomain.CurrentDomain.GetAssemblies();
             for (int i = 0; i < loadedAssemblies.Length; i++)
             {
+                // Skip dynamic assemblies — they exist only in memory (e.g. "Anonymously Hosted
+                // DynamicMethods Assembly") and have no .dll file to fetch metadata from.
+                if (loadedAssemblies[i].IsDynamic) continue;
                 string assemblyName = loadedAssemblies[i].GetName().Name;
                 // Skip our own previously compiled assembly — it's in-memory and has no .dll to fetch
                 if (!string.IsNullOrEmpty(assemblyName) && assemblyName != "UserAssembly")
@@ -163,7 +178,8 @@ namespace XnaFiddle
                     Log = string.Join("\n", securityErrors.Select(e => e.Message)),
                     Success = false,
                     Diagnostics = securityErrors,
-                    FailedAssemblies = failedAssemblies
+                    FailedAssemblies = failedAssemblies,
+                    VersionInfo = versionInfo
                 };
             }
 
@@ -202,8 +218,28 @@ namespace XnaFiddle
                 Log = log,
                 Success = emitResult.Success,
                 Diagnostics = diagnosticInfos,
-                FailedAssemblies = failedAssemblies
+                FailedAssemblies = failedAssemblies,
+                VersionInfo = versionInfo
             };
+        }
+
+        private static string GetAssemblyVersion(string assemblyName)
+        {
+            Assembly asm = AppDomain.CurrentDomain.GetAssemblies()
+                .FirstOrDefault(a => !a.IsDynamic && a.GetName().Name == assemblyName);
+            if (asm == null) return "?";
+
+            string infoVersion = asm
+                .GetCustomAttribute<System.Reflection.AssemblyInformationalVersionAttribute>()
+                ?.InformationalVersion;
+            if (!string.IsNullOrEmpty(infoVersion))
+            {
+                // Strip build metadata suffix (+commithash) common in NuGet packages
+                int plus = infoVersion.IndexOf('+');
+                return plus >= 0 ? infoVersion[..plus] : infoVersion;
+            }
+
+            return asm.GetName().Version?.ToString() ?? "?";
         }
 
     }

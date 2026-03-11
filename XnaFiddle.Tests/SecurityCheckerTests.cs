@@ -64,6 +64,9 @@ public class SecurityCheckerTests
             typeof(System.Linq.Expressions.Expression).Assembly.Location,       // System.Linq.Expressions
             typeof(System.Runtime.CompilerServices.Unsafe).Assembly.Location,   // System.Runtime.CompilerServices.Unsafe
             typeof(System.Collections.Generic.List<>).Assembly.Location,
+            typeof(System.Threading.Timer).Assembly.Location,
+            typeof(System.Timers.Timer).Assembly.Location,
+            typeof(System.Threading.Tasks.Parallel).Assembly.Location,
             // Roslyn itself (tests blocking Microsoft.CodeAnalysis usage).
             typeof(CSharpCompilation).Assembly.Location,
             typeof(Compilation).Assembly.Location,
@@ -77,6 +80,10 @@ public class SecurityCheckerTests
             "nkast.Wasm.Clipboard.dll",       // assembly name; namespace is nkast.Wasm.WebClipboard
             "nkast.Wasm.JSInterop.dll",        // needed for Clipboard base type resolution
             "nkast.Wasm.Dom.dll",
+            "nkast.Wasm.Canvas.dll",
+            "nkast.Wasm.Audio.dll",
+            "nkast.Wasm.XR.dll",
+            "TextCopy.dll",
         ];
         string baseDir = AppContext.BaseDirectory;
         foreach (string dll in outputDirDlls)
@@ -538,4 +545,274 @@ public class SecurityCheckerTests
             """);
         Assert.True(errors.All(e => e.Severity == "error"));
     }
+
+    // ── Forbidden: dynamic keyword ────────────────────────────────────────────
+
+    [Fact]
+    public void Dynamic_AsVariableType_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { dynamic x = "foo"; } }
+            """);
+        Assert.True(HasError(errors, "dynamic"));
+    }
+
+    [Fact]
+    public void Dynamic_AsParameterType_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M(dynamic x) { } }
+            """);
+        Assert.True(HasError(errors, "dynamic"));
+    }
+
+    [Fact]
+    public void Dynamic_ReflectionBypass_IsBlocked()
+    {
+        // This is the key exploit pattern: assign MethodInfo to dynamic to bypass
+        // the null-symbol guard, then call Invoke without a static System.Reflection reference.
+        var errors = Check("""
+            class C { void M() { dynamic mi = typeof(string).GetMethod("ToString"); mi.Invoke("hi", null); } }
+            """);
+        Assert.True(HasError(errors, "dynamic"));
+    }
+
+    // ── Forbidden: TextCopy clipboard write ───────────────────────────────────
+
+    [Fact]
+    public void TextCopy_SetText_IsBlocked()
+    {
+        if (!DllPresent("TextCopy.dll")) return;
+        var errors = Check("""
+            using TextCopy;
+            class C { void M() { ClipboardService.SetText("hi"); } }
+            """);
+        Assert.True(HasError(errors, "TextCopy"));
+    }
+
+    [Fact]
+    public void TextCopy_GetText_IsBlocked()
+    {
+        if (!DllPresent("TextCopy.dll")) return;
+        var errors = Check("""
+            using TextCopy;
+            class C { void M() { string s = ClipboardService.GetText(); } }
+            """);
+        Assert.True(HasError(errors, "TextCopy"));
+    }
+
+    // ── Forbidden: nkast.Wasm.Canvas / Audio ─────────────────────────────────
+
+    [Fact]
+    public void WasmCanvas_IsBlocked()
+    {
+        if (!DllPresent("nkast.Wasm.Canvas.dll")) return;
+        var errors = Check("""
+            using nkast.Wasm.Canvas;
+            class C { void M(Canvas c) { } }
+            """);
+        Assert.True(HasError(errors, "nkast.Wasm.Canvas"));
+    }
+
+    [Fact]
+    public void WasmAudio_IsBlocked()
+    {
+        if (!DllPresent("nkast.Wasm.Audio.dll")) return;
+        var errors = Check("""
+            using nkast.Wasm.Audio;
+            class C { void M(AudioContext ac) { } }
+            """);
+        Assert.True(HasError(errors, "nkast.Wasm.Audio"));
+    }
+
+    // ── Forbidden: Task.Run (zombie background tasks) ─────────────────────────
+
+    [Fact]
+    public void TaskRun_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { void M() { Task.Run(() => { }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.Task.Run"));
+    }
+
+    [Fact]
+    public void TaskRun_WithFuncTask_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { void M() { Task.Run(async () => { await Task.Delay(10); }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.Task.Run"));
+    }
+
+    // ── Allowed: async/await and Task.Delay must still work ───────────────────
+
+    [Fact]
+    public void TaskDelay_IsAllowed()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { async Task M() { await Task.Delay(100); } }
+            """);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void Async_Await_IsAllowed()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { async Task<int> M() { await Task.Delay(50); return 42; } }
+            """);
+        Assert.Empty(errors);
+    }
+
+    // ── Forbidden: task/thread creation bypass variants ───────────────────────
+
+    [Fact]
+    public void TaskFactory_StartNew_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { void M() { Task.Factory.StartNew(() => { }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.TaskFactory.StartNew"));
+    }
+
+    [Fact]
+    public void Task_Start_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { void M() { var t = new Task(() => { }); t.Start(); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.Task.Start"));
+    }
+
+    [Fact]
+    public void ThreadPool_QueueUserWorkItem_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { System.Threading.ThreadPool.QueueUserWorkItem(_ => { }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.ThreadPool.QueueUserWorkItem"));
+    }
+
+    [Fact]
+    public void ThreadPool_UnsafeQueueUserWorkItem_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { System.Threading.ThreadPool.UnsafeQueueUserWorkItem(_ => { }, null); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.ThreadPool.UnsafeQueueUserWorkItem"));
+    }
+
+    [Fact]
+    public void Threading_Timer_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { var t = new System.Threading.Timer(_ => { }, null, 0, 100); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Timer"));
+    }
+
+    [Fact]
+    public void Timers_Timer_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { var t = new System.Timers.Timer(1000); } }
+            """);
+        Assert.True(HasError(errors, "System.Timers.Timer"));
+    }
+
+    [Fact]
+    public void Parallel_For_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { void M() { Parallel.For(0, 10, i => { }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.Parallel"));
+    }
+
+    [Fact]
+    public void Parallel_ForEach_IsBlocked()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            using System.Collections.Generic;
+            class C { void M() { Parallel.ForEach(new List<int>(), i => { }); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.Tasks.Parallel"));
+    }
+
+    // ── Allowed: legitimate async patterns must still work ────────────────────
+
+    [Fact]
+    public void Task_WhenAll_IsAllowed()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { async Task M(Task a, Task b) { await Task.WhenAll(a, b); } }
+            """);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void Task_WhenAny_IsAllowed()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { async Task M(Task a, Task b) { await Task.WhenAny(a, b); } }
+            """);
+        Assert.Empty(errors);
+    }
+
+    [Fact]
+    public void TaskCompletionSource_IsAllowed()
+    {
+        var errors = Check("""
+            using System.Threading.Tasks;
+            class C { Task<int> M() { var tcs = new TaskCompletionSource<int>(); tcs.SetResult(42); return tcs.Task; } }
+            """);
+        Assert.Empty(errors);
+    }
+
+    // ── Forbidden: SynchronizationContext, StackTrace, nkast.Wasm.XR ─────────
+
+    [Fact]
+    public void SynchronizationContext_Post_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { System.Threading.SynchronizationContext.Current.Post(_ => { }, null); } }
+            """);
+        Assert.True(HasError(errors, "System.Threading.SynchronizationContext"));
+    }
+
+    [Fact]
+    public void Diagnostics_StackTrace_IsBlocked()
+    {
+        var errors = Check("""
+            class C { void M() { var st = new System.Diagnostics.StackTrace(); } }
+            """);
+        Assert.True(HasError(errors, "System.Diagnostics.StackTrace"));
+    }
+
+    [Fact]
+    public void WasmXR_IsBlocked()
+    {
+        if (!DllPresent("nkast.Wasm.XR.dll")) return;
+        var errors = Check("""
+            using nkast.Wasm.XR;
+            class C { void M(XRSession s) { } }
+            """);
+        Assert.True(HasError(errors, "nkast.Wasm.XR"));
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private static bool DllPresent(string name) =>
+        File.Exists(Path.Combine(AppContext.BaseDirectory, name));
 }

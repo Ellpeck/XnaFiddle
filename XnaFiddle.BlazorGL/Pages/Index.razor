@@ -31,25 +31,29 @@
                 <option value="@name">@name</option>
             }
         </select>
-        <button @onclick="ShareAsCode"
-                style="padding: 4px 10px; background: #3c3c3c; color: #d4d4d4;
-                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
-            <i class="codicon codicon-link-external"></i> Share
+        <button @onclick="ShareAsCode" title="Share as URL"
+                style="padding: 4px 8px; background: #3c3c3c; color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 14px; display: flex; align-items: center;">
+            <i class="codicon codicon-link-external"></i>
         </button>
-        <button @onclick="() => _assetsOpen = !_assetsOpen"
-                style="padding: 4px 10px; background: @(_assets.Count > 0 ? "#2d5a2d" : "#3c3c3c"); color: #d4d4d4;
-                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
-            <i class="codicon codicon-file-media"></i> Assets@(_assets.Count > 0 ? $" ({_assets.Count})" : "")
+        <button @onclick="() => _assetsOpen = !_assetsOpen" title="@(_assets.Count > 0 ? $"Assets ({_assets.Count})" : "Assets")"
+                style="padding: 4px 8px; background: @(_assets.Count > 0 ? "#2d5a2d" : "#3c3c3c"); color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 14px; display: flex; align-items: center; position: relative;">
+            <i class="codicon codicon-file-media"></i>
+            @if (_assets.Count > 0)
+            {
+                <span style="position: absolute; top: 1px; right: 1px; font-size: 9px; color: #89d185; line-height: 1;">@_assets.Count</span>
+            }
         </button>
-        <button @onclick="() => { _gistOpen = !_gistOpen; if (!_gistOpen) _gistCodeCopied = false; }"
-                style="padding: 4px 10px; background: @(_gistOpen ? "#0e639c" : "#3c3c3c"); color: #d4d4d4;
-                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
-            <i class="codicon codicon-github"></i> Gist
+        <button @onclick="() => { _gistOpen = !_gistOpen; if (!_gistOpen) _gistCodeCopied = false; }" title="Gist"
+                style="padding: 4px 8px; background: @(_gistOpen ? "#0e639c" : "#3c3c3c"); color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 14px; display: flex; align-items: center;">
+            <i class="codicon codicon-github"></i>
         </button>
-        <button @onclick="ToggleRunLocally"
-                style="padding: 4px 10px; background: #3c3c3c; color: #d4d4d4;
-                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;">
-            <i class="codicon codicon-desktop-download"></i> Run Locally
+        <button @onclick="ToggleRunLocally" title="Run Locally"
+                style="padding: 4px 8px; background: #3c3c3c; color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 14px; display: flex; align-items: center;">
+            <i class="codicon codicon-desktop-download"></i>
         </button>
         @if (!string.IsNullOrEmpty(_statusMessage))
         {
@@ -237,7 +241,22 @@
     height: 100vh;
     background: #007acc;
     cursor: ew-resize;
-    z-index: 10;"></div>
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: center;">
+    <button @onclick="ToggleLayout"
+            title="@(_layoutVertical ? "Switch to left/right layout" : "Switch to top/bottom layout")"
+            style="position: absolute; width: 20px; height: 20px; padding: 0;
+                   background: #007acc; color: white; border: none; cursor: pointer;
+                   border-radius: 50%; font-size: 11px;
+                   display: flex; align-items: center; justify-content: center;
+                   opacity: 0.6; transition: opacity 0.15s; z-index: 11;"
+            onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.6'"
+            onmousedown="event.stopPropagation()">
+        <i class="codicon @(_layoutVertical ? "codicon-split-horizontal" : "codicon-split-vertical")" style="font-size: 11px;"></i>
+    </button>
+</div>
 
 <div id="canvasHolder" style="
     background: #000;
