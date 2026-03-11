@@ -145,13 +145,27 @@ namespace XnaFiddle
                 outputKind: OutputKind.DynamicallyLinkedLibrary,
                 reportSuppressedDiagnostics: true,
                 metadataImportOptions: MetadataImportOptions.Public,
-                allowUnsafe: true,
+                allowUnsafe: false,
                 optimizationLevel: OptimizationLevel.Release,
                 concurrentBuild: false  // WASM is single-threaded; parallel workers deadlock on Monitor.Wait
             );
 
             CSharpCompilation compilation = CSharpCompilation.Create(
                 "UserAssembly", [syntaxTree], metadataReferences.ToArray(), compilationOptions);
+
+            // Security check: reject forbidden APIs before emitting.
+            List<DiagnosticInfo> securityErrors = SecurityChecker.Check(compilation, syntaxTree);
+            if (securityErrors.Count > 0)
+            {
+                return new CompilationResult
+                {
+                    ILBytes = null,
+                    Log = string.Join("\n", securityErrors.Select(e => e.Message)),
+                    Success = false,
+                    Diagnostics = securityErrors,
+                    FailedAssemblies = failedAssemblies
+                };
+            }
 
             using MemoryStream ILMemoryStream = new();
             EmitResult emitResult = compilation.Emit(ILMemoryStream);
@@ -191,5 +205,6 @@ namespace XnaFiddle
                 FailedAssemblies = failedAssemblies
             };
         }
+
     }
 }
