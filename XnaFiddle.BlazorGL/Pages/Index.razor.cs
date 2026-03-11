@@ -28,6 +28,11 @@ namespace XnaFiddle.Pages
         bool _gistCodeCopied;
         bool _runLocallyOpen;
         bool _layoutVertical;
+
+        static string BuildTimeLocal =>
+            DateTime.Parse(BuildInfo.BuildTime, null, System.Globalization.DateTimeStyles.RoundtripKind)
+                .ToLocalTime()
+                .ToString("MMM d, h:mm tt");
         string _gistInput = "";
         int _compileProgress;
         int _compileTotal;
@@ -67,6 +72,13 @@ namespace XnaFiddle.Pages
 
             if (firstRender)
             {
+                double viewportWidth = await JsRuntime.InvokeAsync<double>("eval", "window.innerWidth");
+                if (viewportWidth < 768)
+                {
+                    _layoutVertical = true;
+                    await JsRuntime.InvokeVoidAsync("setLayoutMode", true);
+                }
+
                 string defaultCode = ExampleGallery.Load("ColorCycle") ?? "";
                 await JsRuntime.InvokeVoidAsync("monacoInterop.init", "monacoContainer", defaultCode);
                 _monacoReady = true;
