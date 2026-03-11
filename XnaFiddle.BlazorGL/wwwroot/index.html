@@ -236,6 +236,19 @@
             });
         })();
 
+        window.clearCanvas = function () {
+            var canvas = document.getElementById('theCanvas');
+            if (!canvas) return;
+            var gl = canvas.getContext('webgl2') || canvas.getContext('webgl');
+            if (gl) {
+                gl.clearColor(0, 0, 0, 1);
+                gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+            } else {
+                var ctx = canvas.getContext('2d');
+                if (ctx) ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+
         window.initRenderJS = (instance) => {
             if (!globalThis.Module)
                 globalThis.Module = Blazor.runtime.Module;

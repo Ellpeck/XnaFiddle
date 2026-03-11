@@ -24,7 +24,8 @@
         </button>
         <select @onchange="OnExampleSelected" value="@_selectedExample"
                 style="padding: 3px 8px; background: #3c3c3c; color: #d4d4d4; border: 1px solid #555;
-                       font-size: 13px; cursor: pointer; user-select: none; -webkit-user-select: none;">
+                       font-size: 13px; cursor: pointer; user-select: none; -webkit-user-select: none;
+                       max-width: 140px;">
             <option value="">Examples...</option>
             @foreach (var name in ExampleGallery.Names)
             {

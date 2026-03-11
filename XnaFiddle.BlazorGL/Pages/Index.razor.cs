@@ -376,7 +376,6 @@ namespace XnaFiddle.Pages
                 string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
                 string encoded = UrlCodec.Encode(code);
                 string shareUrl = "https://xnafiddle.net/#code=" + encoded;
-                _selectedExample = "";
                 await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#code={encoded}')");
                 await JsRuntime.InvokeVoidAsync("navigator.clipboard.writeText", shareUrl);
 
@@ -596,11 +595,17 @@ namespace XnaFiddle.Pages
                 await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", code);
                 await JsRuntime.InvokeVoidAsync("eval",
                     $"history.replaceState(null,'','?example={Uri.EscapeDataString(name)}')");
+
+                // Stop the running game and clear the canvas
+                _game = null;
+                _statusMessage = "";
+                _diagnosticsOutput = "";
+                await JsRuntime.InvokeVoidAsync("clearCanvas");
+
                 if (_runLocallyOpen)
-                {
                     RefreshRunLocallyPackages(code);
-                    StateHasChanged();
-                }
+
+                StateHasChanged();
             }
         }
 
