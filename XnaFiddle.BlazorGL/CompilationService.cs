@@ -100,15 +100,15 @@ namespace XnaFiddle
             }
 
             // Collect library version info for display in the diagnostics panel
-            (string Label, string AsmName)[] versionTargets =
+            (string Label, string[] AsmNames)[] versionTargets =
             [
-                ("KNI",              "Kni.Platform"),
-                ("Gum",              "KniGum"),
-                ("MG.Extended",      "KNI.Extended"),
-                ("Apos.Shapes",      "Apos.Shapes.KNI"),
+                ("KNI",              ["Kni.Platform"]),
+                ("Gum",              ["GumCommon", "KniGum"]),
+                ("MG.Extended",      ["KNI.Extended"]),
+                ("Apos.Shapes",      ["Apos.Shapes.KNI"]),
             ];
             string versionInfo = string.Join("  ·  ",
-                versionTargets.Select(t => $"{t.Label} {GetAssemblyVersion(t.AsmName)}"));
+                versionTargets.Select(t => $"{t.Label} {t.AsmNames.Select(GetAssemblyVersion).FirstOrDefault(v => v != "?" && v != "0.0.0.0" && v != "0.0.0") ?? GetAssemblyVersion(t.AsmNames[0])}"));
 
             // Collect assembly names from loaded assemblies + known KNI assemblies
             HashSet<string> assembliesRequired = [];
