@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -30,6 +31,7 @@ namespace XnaFiddle.Pages
         string _statusColor = ColorSuccess;
         bool _isCompiling;
         bool _pendingCompile;
+        int _compileThrottleFrame;
         bool _monacoReady;
         bool _assetsOpen;
         bool _gistOpen;
@@ -37,6 +39,14 @@ namespace XnaFiddle.Pages
         bool _runLocallyOpen;
         bool _layoutVertical;
         bool _embedMode;
+        bool _shareOpen;
+        bool _shareAsSnippet;
+        string _shareCodeEncoded;
+        string _shareCodeUrl;
+        SnippetRevertResult _revertResult;
+        bool _snipMembers, _snipInitialize, _snipLoadContent, _snipUpdate, _snipDraw;
+        string _snippetPreviewJson;
+        string _snippetPreviewUrl;
         string _editUrl = "";
 
         static string BuildTimeLocal =>
@@ -121,6 +131,9 @@ namespace XnaFiddle.Pages
                 var dotNetRef = DotNetObjectReference.Create(this);
                 await JsRuntime.InvokeAsync<object>("initRenderJS", dotNetRef);
                 await JsRuntime.InvokeVoidAsync("fileDropInterop.init", dotNetRef);
+                await JsRuntime.InvokeVoidAsync("keyboardInterop.init", dotNetRef);
+                try { await JsRuntime.InvokeVoidAsync("monacoInterop.registerChangeCallback", dotNetRef); }
+                catch { /* stale JS cache — hard-reload the page to pick up the new monaco-interop.js */ }
                 string exampleFromQuery = UrlCodec.ParseQueryParam(search, "example");
                 string gistFromQuery = UrlCodec.ParseQueryParam(search, "gist");
                 bool autoCompile = false;
@@ -162,6 +175,49 @@ namespace XnaFiddle.Pages
         {
             ".png", ".fnt"
         };
+
+        [JSInvokable]
+        public void TriggerCompileAndRun()
+        {
+            if (!_isCompiling)
+                CompileAndRun();
+        }
+
+        [JSInvokable]
+        public async Task OnEditorContentChanged()
+        {
+            if (!_shareOpen) return;
+
+            string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
+
+            _shareCodeEncoded = UrlCodec.Encode(code);
+            _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded;
+
+            var newResult = SnippetReverter.Revert(code);
+
+            // Update checkbox state:
+            //   - section gained content → auto-check it
+            //   - section lost content   → force-uncheck it (nothing to include)
+            //   - section still has content → preserve the user's choice
+            UpdateSnipCheckbox(ref _snipMembers,     _revertResult?.Members,     newResult.Members);
+            UpdateSnipCheckbox(ref _snipInitialize,  _revertResult?.Initialize,  newResult.Initialize);
+            UpdateSnipCheckbox(ref _snipLoadContent, _revertResult?.LoadContent, newResult.LoadContent);
+            UpdateSnipCheckbox(ref _snipUpdate,      _revertResult?.Update,      newResult.Update);
+            UpdateSnipCheckbox(ref _snipDraw,        _revertResult?.Draw,        newResult.Draw);
+
+            _revertResult = newResult;
+            RecomputeSnippetPreview();
+            StateHasChanged();
+        }
+
+        static void UpdateSnipCheckbox(ref bool checkbox, string oldContent, string newContent)
+        {
+            bool hadContent = !string.IsNullOrWhiteSpace(oldContent);
+            bool hasContent = !string.IsNullOrWhiteSpace(newContent);
+            if (!hadContent && hasContent) checkbox = true;   // newly appeared → check
+            else if (!hasContent)          checkbox = false;  // gone → uncheck
+            // else: still has content → leave checkbox as-is
+        }
 
         [JSInvokable]
         public void OnFileDropped(string fileName, string base64Data)
@@ -288,6 +344,10 @@ namespace XnaFiddle.Pages
             // interleaving points are await boundaries, and DoCompileAndRun() has none
             // between _game = null and _game = newGame, so this null check is sufficient.
             if (_game == null)
+                return;
+
+            // Throttle to ~4 fps while compiling so the compiler gets most of the CPU.
+            if (_isCompiling && ++_compileThrottleFrame % 15 != 0)
                 return;
 
             try
@@ -429,6 +489,106 @@ namespace XnaFiddle.Pages
             }
 
             StateHasChanged();
+        }
+
+        private async Task OpenShareDialog()
+        {
+            if (_shareOpen)
+            {
+                _shareOpen = false;
+                StateHasChanged();
+                return;
+            }
+
+            if (!_monacoReady) return;
+
+            try
+            {
+                string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
+
+                _shareCodeEncoded = UrlCodec.Encode(code);
+                _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded;
+
+                _revertResult = SnippetReverter.Revert(code);
+                _snipMembers     = !string.IsNullOrWhiteSpace(_revertResult?.Members);
+                _snipInitialize  = !string.IsNullOrWhiteSpace(_revertResult?.Initialize);
+                _snipLoadContent = !string.IsNullOrWhiteSpace(_revertResult?.LoadContent);
+                _snipUpdate      = !string.IsNullOrWhiteSpace(_revertResult?.Update);
+                _snipDraw        = !string.IsNullOrWhiteSpace(_revertResult?.Draw);
+
+                RecomputeSnippetPreview();
+                _shareAsSnippet = false;
+                _shareOpen = true;
+            }
+            catch (Exception e)
+            {
+                SetError("Share failed.", e.Message);
+            }
+
+            StateHasChanged();
+        }
+
+        private void RecomputeSnippetPreview()
+        {
+            if (_revertResult == null || !_revertResult.Success)
+            {
+                _snippetPreviewJson = null;
+                _snippetPreviewUrl = null;
+                return;
+            }
+
+            var model = new SnippetModel
+            {
+                IsGum              = _revertResult.IsGum,
+                IsAposShapes       = _revertResult.IsAposShapes,
+                IsMonoGameExtended = _revertResult.IsMonoGameExtended,
+                Usings             = _revertResult.ExtraUsings.Count > 0 ? _revertResult.ExtraUsings : null,
+                Members     = _snipMembers     ? _revertResult.Members     : null,
+                Initialize  = _snipInitialize  ? _revertResult.Initialize  : null,
+                LoadContent = _snipLoadContent ? _revertResult.LoadContent : null,
+                Update      = _snipUpdate      ? _revertResult.Update      : null,
+                Draw        = _snipDraw        ? _revertResult.Draw        : null,
+            };
+
+            var ignoreDefaults = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
+            string compactJson = JsonSerializer.Serialize(model, ignoreDefaults);
+            _snippetPreviewJson = JsonSerializer.Serialize(model,
+                new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault, WriteIndented = true });
+
+            string encoded = UrlCodec.Encode(compactJson);
+            _snippetPreviewUrl = "https://xnafiddle.net/#snippet=" + encoded;
+        }
+
+        private async Task CopyShareUrl()
+        {
+            string url = _shareAsSnippet ? _snippetPreviewUrl : _shareCodeUrl;
+            if (url == null) return;
+
+            if (_shareAsSnippet)
+            {
+                // Compact JSON (no indentation) for the actual URL encoding
+                var opts = new JsonSerializerOptions { DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingDefault };
+                var model = new SnippetModel
+                {
+                    IsGum              = _revertResult.IsGum,
+                    IsAposShapes       = _revertResult.IsAposShapes,
+                    IsMonoGameExtended = _revertResult.IsMonoGameExtended,
+                    Usings             = _revertResult.ExtraUsings.Count > 0 ? _revertResult.ExtraUsings : null,
+                    Members     = _snipMembers     ? _revertResult.Members     : null,
+                    Initialize  = _snipInitialize  ? _revertResult.Initialize  : null,
+                    LoadContent = _snipLoadContent ? _revertResult.LoadContent : null,
+                    Update      = _snipUpdate      ? _revertResult.Update      : null,
+                    Draw        = _snipDraw        ? _revertResult.Draw        : null,
+                };
+                string encoded = UrlCodec.Encode(JsonSerializer.Serialize(model, opts));
+                await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#snippet={encoded}')");
+            }
+            else
+            {
+                await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#code={_shareCodeEncoded}')");
+            }
+
+            await CopyToClipboard(url);
         }
 
         private async Task LoadFromSnippet(string encoded)

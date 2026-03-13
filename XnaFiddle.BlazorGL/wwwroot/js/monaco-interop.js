@@ -49,6 +49,14 @@ window.monacoInterop = {
                     }
                 );
 
+                window.monacoInterop._editor.onDidChangeModelContent(function () {
+                    if (!window.monacoInterop._changeCallbackRef) return;
+                    clearTimeout(window.monacoInterop._changeTimer);
+                    window.monacoInterop._changeTimer = setTimeout(function () {
+                        window.monacoInterop._changeCallbackRef.invokeMethodAsync('OnEditorContentChanged');
+                    }, 500);
+                });
+
                 resolve(true);
             });
         });
@@ -310,6 +318,11 @@ window.monacoInterop = {
         });
     },
 
+    registerChangeCallback: function (dotNetRef) {
+        window.monacoInterop._changeCallbackRef = dotNetRef;
+        window.monacoInterop._changeTimer = null;
+    },
+
     getValue: function () {
         if (window.monacoInterop._editor) {
             return window.monacoInterop._editor.getValue();
@@ -373,6 +386,18 @@ window.compileTimerInterop = {
     stop: function () {
         clearInterval(this._interval);
         this._interval = null;
+    }
+};
+
+// Keyboard shortcuts interop (e.g. F5 → compile & run)
+window.keyboardInterop = {
+    init: function (dotNetRef) {
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'F5') {
+                e.preventDefault();
+                dotNetRef.invokeMethodAsync('TriggerCompileAndRun');
+            }
+        });
     }
 };
 
