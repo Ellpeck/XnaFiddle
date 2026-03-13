@@ -392,10 +392,29 @@ window.compileTimerInterop = {
 // Keyboard shortcuts interop (e.g. F5 → compile & run)
 window.keyboardInterop = {
     init: function (dotNetRef) {
+        // Track whether the canvas area is the active interaction target so Tab
+        // can be suppressed there (preventing browser focus cycling) while still
+        // working normally in the Monaco editor.
+        var canvasActive = false;
+        var canvasHolder = document.getElementById('canvasHolder');
+        if (canvasHolder) {
+            canvasHolder.addEventListener('mousedown', function () { canvasActive = true; });
+        }
+        document.addEventListener('focusin', function (e) {
+            if (canvasHolder && canvasHolder.contains(e.target)) {
+                canvasActive = true;
+            } else {
+                canvasActive = false;
+            }
+        });
+
         document.addEventListener('keydown', function (e) {
             if (e.key === 'F5') {
                 e.preventDefault();
                 dotNetRef.invokeMethodAsync('TriggerCompileAndRun');
+            }
+            if (canvasActive && (e.key === 'Tab' || e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'ArrowUp' || e.key === 'ArrowDown')) {
+                e.preventDefault();
             }
         });
     }
