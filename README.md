@@ -17,6 +17,8 @@ XnaFiddle loads code via URL so links are shareable and embeddable. There are tw
 | `?example=<name>` | `?example=BouncingBall` | Load a built-in example by name |
 | `?gist=<id>` | `?gist=abc123` | Load from a GitHub Gist (ID or full URL) |
 | `?embed=true` | `?embed=true&example=AposShapes` | Canvas-only mode — hides the editor (see [Embedding](#embedding)) |
+| `?hover=true` | `?hover=true&embed=true&example=GumUI` | Throttle to 2fps when mouse is not over the canvas; full speed on hover. See [Frame rate and CPU](#frame-rate-and-cpu). |
+| `?fps=N` | `?fps=60&embed=true&example=BouncingBall` | Override the frame rate cap. See [Frame rate and CPU](#frame-rate-and-cpu). |
 
 **Fragment** (`#key=value`) — large payloads, never sent to the server:
 
@@ -146,7 +148,52 @@ The gate page accepts the same parameters as the main app (`example`, `gist`, `#
 
 **localStorage memory:** once a user clicks "Run Sample" on any page, the button is skipped on all future visits across any page that uses `embed-gate.html`. The framework files are also already cached at that point, so subsequent embeds load with no download cost.
 
-#### Performance notes
+#### Frame rate and CPU
+
+Every iframe runs its own WASM game loop on the browser's single main thread. With multiple iframes on the same page, their loops compete for that thread — frame rate and compilation speed both suffer. Two parameters help manage this.
+
+**`?fps=N` — frame rate cap**
+
+In embed mode, XnaFiddle automatically caps frame rate to conserve CPU:
+
+| Scenario | Default |
+|---|---|
+| Embed, desktop | 30 fps |
+| Embed, mobile | 20 fps |
+| Normal editor | Uncapped |
+
+Override with `?fps=N` — for example `?fps=60` to restore full speed, or `?fps=15` to cap lower. Lower is almost always fine for UI and simple demos; users rarely notice the difference between 30fps and 60fps in a docs embed.
+
+**`?hover=true` — throttle when idle**
+
+Drops to 2fps when the mouse is not over the canvas, and jumps back to full speed (subject to `?fps=`) the moment the mouse enters. On touch devices this parameter is ignored and the game always runs at full speed.
+
+**Recommendations by use case:**
+
+*Single iframe on a page* — the defaults are fine. No need for `?hover=true`; the 30fps cap keeps CPU usage reasonable without any additional interaction required from the user.
+
+```html
+<iframe src="https://xnafiddle.net/embed-gate.html?example=AposShapes"
+        width="600" height="400"></iframe>
+```
+
+*Multiple iframes on a page (e.g. a library showcase)* — add `?hover=true` so only the iframe the user is actively looking at runs at full speed. The others tick at 2fps, which is enough to stay visually alive without meaningfully competing for CPU.
+
+```html
+<iframe src="https://xnafiddle.net/embed-gate.html?hover=true&example=GumUI"
+        width="600" height="400"></iframe>
+```
+
+*UI-heavy demos (Gum, buttons, sliders)* — these only need to respond when the user is interacting, making `?hover=true` especially well suited. Consider also lowering `?fps=` since UI typically doesn't need high frame rates even when active.
+
+```html
+<iframe src="https://xnafiddle.net/embed-gate.html?hover=true&fps=20&example=GumUI"
+        width="600" height="400"></iframe>
+```
+
+*Animation or physics demos* — keep `?hover=true` off if the demo should play continuously as the user reads past it. The 30fps default is enough for smooth motion in a small embed.
+
+#### Download and caching notes
 
 - Framework files (~4 MB after brotli compression) are cached by the browser after the first load and shared across all XnaFiddle iframes on any page
 - Each iframe runs its own WASM instance — there is no shared memory between iframes on the same page

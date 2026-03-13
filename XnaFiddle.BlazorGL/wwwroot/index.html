@@ -76,7 +76,31 @@
         // 5 seconds is intentionally lenient to allow slow Initialize()/LoadContent().
         var WATCHDOG_FRAME_MS = 5000;
 
-        function tickJS() {
+        // ?hover=true throttle state. When hover mode is active and the mouse is not
+        // over the canvas, the game runs at 2fps to save CPU. On touch devices hover
+        // mode is ignored and the game always runs at full speed.
+        // _hoverThrottle: whether ?hover=true was set (and device is not touch)
+        // _hoverActive:   whether the mouse is currently over the canvas (or hover mode is off)
+        window._hoverThrottle = false;
+        window._hoverActive   = true;
+
+        // FPS cap. _tickInterval is the minimum ms between ticks (0 = uncapped).
+        // Embed mode defaults: 30fps desktop, 20fps mobile. Override with ?fps=N.
+        window._tickInterval = 0;
+        window._lastTickTime = 0;
+
+        function tickJS(timestamp) {
+            // FPS cap: skip this tick if not enough time has elapsed since the last one.
+            if (window._tickInterval > 0) {
+                var now = timestamp > 0 ? timestamp : performance.now();
+                var elapsed = now - window._lastTickTime;
+                if (elapsed < window._tickInterval) {
+                    window.requestAnimationFrame(tickJS);
+                    return;
+                }
+                // Subtract remainder to avoid drift accumulating over time
+                window._lastTickTime = now - (elapsed % window._tickInterval);
+            }
             // Sync canvas drawing buffer to its container each frame
             var canvas = document.getElementById('theCanvas');
             var holder = document.getElementById('canvasHolder');
@@ -102,8 +126,12 @@
                 window.theInstance.invokeMethod('OnGameTimedOut', tickMs);
             }
 
-            window.requestAnimationFrame(tickJS);
-        }
+            if (window._hoverThrottle && !window._hoverActive) {
+                setTimeout(tickJS, 500); // 2fps when mouse is not over canvas
+            } else {
+                window.requestAnimationFrame(tickJS);
+            }
+        } // end tickJS
 
         // Splitter + layout logic (supports left/right and top/bottom modes)
         (function () {
@@ -281,6 +309,29 @@
             canvas.width = holder.clientWidth;
             canvas.height = holder.clientHeight;
             canvas.addEventListener("contextmenu", e => e.preventDefault());
+
+            var params = new URLSearchParams(window.location.search);
+            var isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
+
+            // FPS cap — embed mode defaults: 30fps desktop, 20fps mobile. ?fps=N overrides.
+            var fpsParam = parseInt(params.get('fps'), 10);
+            var isEmbed  = params.get('embed') === 'true';
+            var targetFps = 0;
+            if (!isNaN(fpsParam) && fpsParam > 0) {
+                targetFps = fpsParam;
+            } else if (isEmbed) {
+                targetFps = isTouchDevice ? 20 : 30;
+            }
+            window._tickInterval = targetFps > 0 ? (1000 / targetFps) : 0;
+
+            // ?hover=true — throttle to 2fps when mouse is not over the canvas.
+            // Ignored on touch devices (no hover concept; always runs at full speed).
+            if (params.get('hover') === 'true' && !isTouchDevice) {
+                window._hoverThrottle = true;
+                window._hoverActive   = false; // start throttled until first hover
+                holder.addEventListener('mouseenter', function () { window._hoverActive = true; });
+                holder.addEventListener('mouseleave', function () { window._hoverActive = false; });
+            }
 
             window.requestAnimationFrame(tickJS);
         };
