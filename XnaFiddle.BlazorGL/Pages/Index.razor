@@ -2,9 +2,17 @@
 @inject IJSRuntime JsRuntime
 @inject HttpClient Http
 @inject CompilationService Compiler
+@inject NavigationManager Navigation
 
 <PageTitle>XnaFiddle</PageTitle>
 
+@if (_embedMode)
+{
+    <div id="monacoContainer" style="display:none; width:0; height:0; position:absolute;"></div>
+}
+
+@if (!_embedMode)
+{
 <div id="editorPanel" style="
     position: fixed;
     top: 0;
@@ -233,7 +241,10 @@
                     height: 100px; flex-shrink: 0; white-space: pre-wrap; word-wrap: break-word;">@_diagnosticsOutput</pre>
     }
 </div>
+} @* end @if (!_embedMode) *@
 
+@if (!_embedMode)
+{
 <div id="splitter" style="
     position: fixed;
     top: 0;
@@ -258,6 +269,7 @@
         <i class="codicon @(_layoutVertical ? "codicon-split-horizontal" : "codicon-split-vertical")" style="font-size: 11px;"></i>
     </button>
 </div>
+} @* end @if (!_embedMode) *@
 
 <div id="canvasHolder" style="
     background: #000;
@@ -265,8 +277,56 @@
     top: 0;
     right: 0;
     bottom: 0;
-    left: calc(45vw + 2px);">
+    left: @(_embedMode ? "0" : "calc(45vw + 2px)");">
     <canvas id="theCanvas" style="touch-action:none;"></canvas>
+    @if (_embedMode && _isCompiling)
+    {
+        var embedAssemblyDone = _compileTotal > 0 && _compileProgress >= _compileTotal;
+        var embedPct = embedAssemblyDone ? 100 : (_compileTotal > 0 ? (90 * _compileProgress / _compileTotal) : 0);
+        var embedBarTransition = embedAssemblyDone ? "width 4s ease-in" : "none";
+        <div style="position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center;
+                    z-index: 20; pointer-events: none; background: rgba(0,0,0,0.75);">
+            <div style="color: #9cdcfe; font-family: 'Segoe UI', sans-serif; font-size: 16px; font-weight: 300; letter-spacing: 0.05em; margin-bottom: 16px;">XnaFiddle</div>
+            <div style="width: 200px; height: 3px; background: #222; border-radius: 2px; overflow: hidden; margin-bottom: 10px;">
+                <div style="height: 100%; width: @(embedPct)%; background: #007acc; transition: @embedBarTransition; position: relative; overflow: hidden;">
+                    <div style="position: absolute; top: 0; left: 0; height: 100%; width: 40%;
+                                background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+                                animation: compileshimmer 1.5s infinite linear; will-change: transform;"></div>
+                </div>
+            </div>
+            <div style="color: #888; font-family: 'Segoe UI', sans-serif; font-size: 12px;">
+                @if (embedAssemblyDone)
+                {
+                    <text>Compiling... &nbsp;·&nbsp; <span id="compileTimer">0.0s</span></text>
+                }
+                else if (_compileTotal > 0)
+                {
+                    <text>Loading @_compileProgress / @_compileTotal</text>
+                }
+                else
+                {
+                    <text>Starting...</text>
+                }
+            </div>
+            @if (!_hasCompiledOnce)
+            {
+                <div style="color: #555; font-family: 'Segoe UI', sans-serif; font-size: 11px; margin-top: 6px;">first compile takes longer</div>
+            }
+        </div>
+    }
+    @if (_embedMode && !string.IsNullOrEmpty(_editUrl))
+    {
+        <a href="@_editUrl" target="_blank"
+           style="position: absolute; top: 8px; right: 8px; z-index: 15;
+                  padding: 3px 8px; background: rgba(0,0,0,0.5); color: #aaa;
+                  text-decoration: none; font-size: 11px; font-family: 'Segoe UI', sans-serif;
+                  border: 1px solid rgba(255,255,255,0.12); border-radius: 3px;
+                  display: flex; align-items: center; gap: 4px;
+                  opacity: 0.55; transition: opacity 0.15s;"
+           onmouseover="this.style.opacity='1'" onmouseout="this.style.opacity='0.55'">
+            <i class="codicon codicon-edit" style="font-size: 11px;"></i> Edit in XnaFiddle
+        </a>
+    }
     @if (_game == null && !_isCompiling)
     {
         <div style="position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none;">

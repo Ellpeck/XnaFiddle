@@ -36,6 +36,8 @@ namespace XnaFiddle.Pages
         bool _gistCodeCopied;
         bool _runLocallyOpen;
         bool _layoutVertical;
+        bool _embedMode;
+        string _editUrl = "";
 
         static string BuildTimeLocal =>
             DateTime.Parse(BuildInfo.BuildTime, null, System.Globalization.DateTimeStyles.RoundtripKind)
@@ -74,26 +76,21 @@ namespace XnaFiddle.Pages
         List<PackageInfo> _runLocallyPackages = new();
         List<AssetInfo> _assets = new();
 
+        protected override void OnInitialized()
+        {
+            // Set _embedMode before the first render so the editor panel is never shown in embed mode.
+            // NavigationManager is available synchronously here, unlike IJSRuntime which requires OnAfterRender.
+            var uri = new Uri(Navigation.Uri);
+            _embedMode = UrlCodec.ParseQueryParam(uri.Query, "embed") == "true";
+        }
+
         protected override async void OnAfterRender(bool firstRender)
         {
             base.OnAfterRender(firstRender);
 
             if (firstRender)
             {
-                double viewportWidth = await JsRuntime.InvokeAsync<double>("eval", "window.innerWidth");
-                if (viewportWidth < 768)
-                {
-                    _layoutVertical = true;
-                    await JsRuntime.InvokeVoidAsync("setLayoutMode", true);
-                }
-
-                string defaultCode = ExampleGallery.Load("ColorCycle") ?? "";
-                await JsRuntime.InvokeVoidAsync("monacoInterop.init", "monacoContainer", defaultCode);
-                _monacoReady = true;
-                var dotNetRef = DotNetObjectReference.Create(this);
-                await JsRuntime.InvokeAsync<object>("initRenderJS", dotNetRef);
-                await JsRuntime.InvokeVoidAsync("fileDropInterop.init", dotNetRef);
-
+                // Read URL params first so embed mode is known before any setup.
                 // ?example= and ?gist= use query strings — values are short and it's conventional
                 // for named resources to appear as query params rather than fragments.
                 // #code= and #snippet= use the URL fragment (#) for two reasons:
@@ -102,6 +99,28 @@ namespace XnaFiddle.Pages
                 //   2. Query strings have server/proxy length limits (often 2-8 KB); fragments do not,
                 //      which matters for #code= which can contain a full compressed source file.
                 string search = await JsRuntime.InvokeAsync<string>("eval", "window.location.search");
+
+                if (_embedMode)
+                {
+                    _editUrl = await JsRuntime.InvokeAsync<string>("eval",
+                        "(() => { const u = new URL(window.location.href); u.searchParams.delete('embed'); return u.toString(); })()");
+                }
+                else
+                {
+                    double viewportWidth = await JsRuntime.InvokeAsync<double>("eval", "window.innerWidth");
+                    if (viewportWidth < 768)
+                    {
+                        _layoutVertical = true;
+                        await JsRuntime.InvokeVoidAsync("setLayoutMode", true);
+                    }
+                }
+
+                string defaultCode = ExampleGallery.Load("ColorCycle") ?? "";
+                await JsRuntime.InvokeVoidAsync("monacoInterop.init", "monacoContainer", defaultCode);
+                _monacoReady = true;
+                var dotNetRef = DotNetObjectReference.Create(this);
+                await JsRuntime.InvokeAsync<object>("initRenderJS", dotNetRef);
+                await JsRuntime.InvokeVoidAsync("fileDropInterop.init", dotNetRef);
                 string exampleFromQuery = UrlCodec.ParseQueryParam(search, "example");
                 string gistFromQuery = UrlCodec.ParseQueryParam(search, "gist");
                 bool autoCompile = false;
