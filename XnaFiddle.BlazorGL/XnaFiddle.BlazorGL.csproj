@@ -17,6 +17,7 @@
 
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
     <PackageReference Include="Apos.Shapes.KNI" Version="0.6.8" />
+    <PackageReference Include="FontStashSharp.Kni" Version="1.5.4" />
     <PackageReference Include="Gum.KNI" Version="2026.3.9.1" />
     <PackageReference Include="KNI.Extended" Version="5.4.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.17" />

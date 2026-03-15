@@ -52,7 +52,17 @@ Check the existing pattern in the `.csproj` and follow it exactly.
 
 `ExampleGallery.cs` reads embedded resources matching `*.Examples.*.cs` and exposes them by filename stem. The new example will automatically appear in the dropdown on the page — no code change needed in `ExampleGallery.cs` or `Index.razor`.
 
-### 4. Test
+### 4. Update third-party notices (if bundling external assets)
+
+If the example bundles third-party assets (fonts, images, etc.) from external projects, check whether their license requires attribution (e.g. Apache 2.0, CC-BY). If so, add a row to the table in `THIRD-PARTY-NOTICES.md` at the repo root:
+
+```markdown
+| `Examples/MyExample.AssetName.ext` | License Name | Copyright Holder | [Source](https://...) |
+```
+
+Assets under licenses that don't require attribution (MIT, CC0, Unlicense, public domain) are covered by the file's general intro paragraph and don't need an explicit entry.
+
+### 5. Test
 
 ```bash
 dotnet build XnaFiddle.BlazorGL/XnaFiddle.BlazorGL.csproj

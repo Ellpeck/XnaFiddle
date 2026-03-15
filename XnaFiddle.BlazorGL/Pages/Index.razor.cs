@@ -176,7 +176,7 @@ namespace XnaFiddle.Pages
 
         static readonly HashSet<string> SupportedAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".png", ".fnt"
+            ".png", ".fnt", ".ttf"
         };
 
         [JSInvokable]
@@ -228,7 +228,7 @@ namespace XnaFiddle.Pages
             string ext = System.IO.Path.GetExtension(fileName);
             if (!SupportedAssetExtensions.Contains(ext))
             {
-                _statusMessage = $"Unsupported file: {fileName} (supported: .png, .fnt)";
+                _statusMessage = $"Unsupported file: {fileName} (supported: .png, .fnt, .ttf)";
                 _statusColor = ColorError;
                 _assetsOpen = true;
                 StateHasChanged();

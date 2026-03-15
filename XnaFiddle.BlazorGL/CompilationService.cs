@@ -52,6 +52,7 @@ namespace XnaFiddle
             "Apos.Shapes.KNI",
             "FontStashSharp.Kni",
             "FontStashSharp.Base",
+            "FontStashSharp.Rasterizers.StbTrueTypeSharp",
             "KNI.Extended",
         ];
 
@@ -103,9 +104,10 @@ namespace XnaFiddle
             (string Label, string[] AsmNames)[] versionTargets =
             [
                 ("KNI",              ["Kni.Platform"]),
-                ("Gum",              ["GumCommon", "KniGum"]),
-                ("MG.Extended",      ["KNI.Extended"]),
-                ("Apos.Shapes",      ["Apos.Shapes.KNI"]),
+                ("Gum.KNI",          ["GumCommon", "KniGum"]),
+                ("KNI.Extended",     ["KNI.Extended"]),
+                ("Apos.Shapes.KNI",  ["Apos.Shapes.KNI"]),
+                ("FontStashSharp.Kni", ["FontStashSharp.Kni", "FontStashSharp.Base"]),
             ];
             string versionInfo = string.Join("  ·  ",
                 versionTargets.Select(t => $"{t.Label} {t.AsmNames.Select(GetAssemblyVersion).FirstOrDefault(v => v != "?" && v != "0.0.0.0" && v != "0.0.0") ?? GetAssemblyVersion(t.AsmNames[0])}"));

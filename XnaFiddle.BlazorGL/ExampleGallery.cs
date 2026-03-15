@@ -38,6 +38,9 @@ namespace XnaFiddle
             // Apos.Shapes
             new ExampleInfo { Name = "AposShapes",      Category = "Apos.Shapes", Description = "Draw shapes with the Apos.Shapes library" },
 
+            // FontStashSharp
+            new ExampleInfo { Name = "FontStashSharp", Category = "FontStashSharp", Description = "Dynamic text rendering with multiple sizes and colors" },
+
             // MonoGame.Extended
             new ExampleInfo { Name = "Camera2D (MonoGame.Extended)", Category = "MonoGame.Extended", Description = "Pan and zoom a 2D camera with keyboard and mouse" },
         ];
