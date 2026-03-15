@@ -6,12 +6,13 @@ description: How file/asset loading works in XnaFiddle — embedded example asse
 
 XnaFiddle has no disk or traditional content pipeline. All assets live in memory and are loaded through `InMemoryContentManager`, a custom `ContentManager` subclass that serves files from a static `Dictionary<string, byte[]>`.
 
-## Two entry paths, one destination
+## Three entry paths, one destination
 
-| Source | Mechanism | Ends up in |
-|---|---|---|
-| **Example assets** | Embedded resources in the assembly, loaded by `ExampleGallery.LoadAssets()` | `InMemoryContentManager.AddFile()` |
-| **User files** | Drag-and-drop onto canvas, handled by JS `fileDropInterop` -> `OnFileDropped` JSInvokable | `InMemoryContentManager.AddFile()` |
+| Source | Mechanism | Ends up in | SourceUrl set? |
+|---|---|---|---|
+| **Example assets** | Embedded resources in the assembly, loaded by `ExampleGallery.LoadAssets()` | `InMemoryContentManager.AddFile()` | Yes — points to `wwwroot/examples/{ExampleName}/{file}` |
+| **URL-fetched assets** | `FetchAndAddAssetUrl(url)` via `&assets=` share param or URL input | `InMemoryContentManager.AddFile()` | Yes — the fetched URL |
+| **User drag-and-drop** | JS `fileDropInterop` -> `OnFileDropped` JSInvokable | `InMemoryContentManager.AddFile()` | No — cannot be re-fetched |
 
 Both paths converge on `InMemoryContentManager.AddFile(fileName, bytes)`, which stores the data under the original filename AND the extension-stripped name. This lets user code call `Content.Load<Texture2D>("KniIcon")` without knowing the extension.
 
@@ -33,6 +34,14 @@ Example: `Examples/TextureLoading.KniIcon.png` is the asset `KniIcon.png` for th
 The `.csproj` has two wildcard `EmbeddedResource` includes — one for `*.cs` (example code) and one for everything else (assets). No manual `.csproj` edits are needed when adding a new asset file.
 
 `ExampleGallery.LoadAssets(name)` finds all embedded resources that share the example's prefix but are not the `.cs` file, strips the prefix, and returns them as `ExampleAsset[]` (filename + byte array).
+
+### Static copies for sharing
+
+Every example asset is **also** served as a static file under `wwwroot/examples/{ExampleName}/{AssetFile}`. This duplicate is what makes share links work: `LoadExampleAssets()` sets `AssetInfo.SourceUrl` to `{Navigation.BaseUri}examples/{ExampleName}/{file}`, so `GetAssetUrlsFragment()` includes those URLs in the `&assets=` share fragment.
+
+**When adding a new example asset:** place the file in `Examples/` (embedded resource, picked up by wildcard), **and** copy it to `wwwroot/examples/{ExampleName}/{AssetFile}` (static web asset). Both locations are required.
+
+Current static copies: `AetherPhysics/CircleSprite.png`, `AetherPhysics/GroundSprite.png`, `FontStashSharp/DroidSans.ttf`, `TextureLoading/KniIcon.png`.
 
 ## Drag-and-drop flow
 

@@ -52,7 +52,22 @@ Check the existing pattern in the `.csproj` and follow it exactly.
 
 `ExampleGallery.cs` reads embedded resources matching `*.Examples.*.cs` and exposes them by filename stem. The new example will automatically appear in the dropdown on the page — no code change needed in `ExampleGallery.cs` or `Index.razor`.
 
-### 4. Update third-party notices (if bundling external assets)
+### 4. Copy assets to wwwroot (if the example has assets)
+
+If the example has non-code asset files (`.png`, `.fnt`, `.ttf`), they must exist in **two** places:
+
+1. `Examples/{ExampleName}.{AssetFile}` — embedded resource, loaded at runtime by `ExampleGallery.LoadAssets()`
+2. `wwwroot/examples/{ExampleName}/{AssetFile}` — static web asset, served over HTTP so share links can re-fetch them
+
+```bash
+mkdir -p XnaFiddle.BlazorGL/wwwroot/examples/MyExample
+cp XnaFiddle.BlazorGL/Examples/MyExample.MyAsset.png \
+   XnaFiddle.BlazorGL/wwwroot/examples/MyExample/MyAsset.png
+```
+
+`LoadExampleAssets()` automatically sets `AssetInfo.SourceUrl` to `{baseUri}examples/{ExampleName}/{file}`, which `GetAssetUrlsFragment()` includes in share URLs. Without the wwwroot copy, the share link will have the URL but fetching it will 404.
+
+### 6. Update third-party notices (if bundling external assets)
 
 If the example bundles third-party assets (fonts, images, etc.) from external projects, check whether their license requires attribution (e.g. Apache 2.0, CC-BY). If so, add a row to the table in `THIRD-PARTY-NOTICES.md` at the repo root:
 
@@ -62,7 +77,7 @@ If the example bundles third-party assets (fonts, images, etc.) from external pr
 
 Assets under licenses that don't require attribution (MIT, CC0, Unlicense, public domain) are covered by the file's general intro paragraph and don't need an explicit entry.
 
-### 5. Test
+### 7. Test
 
 ```bash
 dotnet build XnaFiddle.BlazorGL/XnaFiddle.BlazorGL.csproj

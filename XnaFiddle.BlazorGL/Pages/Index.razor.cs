@@ -991,7 +991,8 @@ namespace XnaFiddle.Pages
 
                 // Update the UI asset list (same as drag-and-drop path)
                 _assets.RemoveAll(a => string.Equals(a.FileName, assets[i].FileName, System.StringComparison.OrdinalIgnoreCase));
-                _assets.Add(new AssetInfo { FileName = assets[i].FileName, Size = assets[i].Data.Length });
+                string sourceUrl = $"{Navigation.BaseUri}examples/{exampleName}/{assets[i].FileName}";
+                _assets.Add(new AssetInfo { FileName = assets[i].FileName, Size = assets[i].Data.Length, SourceUrl = sourceUrl });
             }
             _assetsOpen = true;
         }
