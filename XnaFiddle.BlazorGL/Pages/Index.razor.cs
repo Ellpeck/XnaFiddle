@@ -67,6 +67,7 @@ namespace XnaFiddle.Pages
             public string FileName;
             public int Size;
             public string[] FntTextures; // non-null for .fnt files: texture filenames referenced by page lines
+            public string SourceUrl;     // non-null when loaded from a URL (for share link encoding)
         }
 
         struct PackageInfo
@@ -87,6 +88,8 @@ namespace XnaFiddle.Pages
 
         List<PackageInfo> _runLocallyPackages = new();
         List<AssetInfo> _assets = new();
+        string _assetUrlInput = "";
+        bool _isFetchingAssetUrl;
 
         protected override void OnInitialized()
         {
@@ -164,8 +167,37 @@ namespace XnaFiddle.Pages
                 }
                 else if (hash.StartsWith("#code="))
                 {
-                    if (await LoadFromCode(hash.Substring(6)))
+                    // Parse #code=...&assets=... — the assets portion is optional
+                    string codeAndRest = hash.Substring(6);
+                    string codePart = codeAndRest;
+                    string assetsPart = null;
+                    int assetsIdx = codeAndRest.IndexOf("&assets=", StringComparison.Ordinal);
+                    if (assetsIdx >= 0)
+                    {
+                        codePart = codeAndRest.Substring(0, assetsIdx);
+                        assetsPart = codeAndRest.Substring(assetsIdx + 8);
+                    }
+
+                    if (await LoadFromCode(codePart))
                         autoCompile = true;
+
+                    if (assetsPart != null)
+                    {
+                        try
+                        {
+                            string json = UrlCodec.Decode(assetsPart);
+                            string[] urls = JsonSerializer.Deserialize<string[]>(json);
+                            if (urls != null && urls.Length > 0)
+                            {
+                                await FetchAssetUrls(urls);
+                                StateHasChanged();
+                            }
+                        }
+                        catch (Exception e)
+                        {
+                            Console.WriteLine($"[XnaFiddle] Failed to parse asset URLs: {e.Message}");
+                        }
+                    }
                 }
 
                 if (autoCompile)
@@ -186,6 +218,19 @@ namespace XnaFiddle.Pages
                 CompileAndRun();
         }
 
+        private string GetAssetUrlsFragment()
+        {
+            var urls = new List<string>();
+            foreach (var asset in _assets)
+            {
+                if (!string.IsNullOrEmpty(asset.SourceUrl))
+                    urls.Add(asset.SourceUrl);
+            }
+            if (urls.Count == 0) return "";
+            string json = JsonSerializer.Serialize(urls);
+            return "&assets=" + UrlCodec.Encode(json);
+        }
+
         [JSInvokable]
         public async Task OnEditorContentChanged()
         {
@@ -194,7 +239,7 @@ namespace XnaFiddle.Pages
             string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
 
             _shareCodeEncoded = UrlCodec.Encode(code);
-            _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded;
+            _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded + GetAssetUrlsFragment();
 
             var newResult = SnippetReverter.Revert(code);
 
@@ -303,6 +348,101 @@ namespace XnaFiddle.Pages
             InMemoryContentManager.RemoveFile(fileName);
             _assets.RemoveAll(a => string.Equals(a.FileName, fileName, StringComparison.OrdinalIgnoreCase));
             StateHasChanged();
+        }
+
+        private async Task OnAssetUrlKeyDown(KeyboardEventArgs e)
+        {
+            if (e.Key == "Enter")
+                await FetchAssetFromUrl();
+        }
+
+        private async Task FetchAssetFromUrl()
+        {
+            string url = _assetUrlInput?.Trim() ?? "";
+            if (string.IsNullOrEmpty(url)) return;
+
+            if (!Uri.TryCreate(url, UriKind.Absolute, out var uri) ||
+                (uri.Scheme != "https" && uri.Scheme != "http"))
+            {
+                _statusMessage = "Invalid URL.";
+                _statusColor = ColorError;
+                StateHasChanged();
+                return;
+            }
+
+            await FetchAndAddAssetUrl(url);
+            if (_statusColor == ColorSuccess)
+                _assetUrlInput = "";
+            StateHasChanged();
+        }
+
+        private async Task FetchAndAddAssetUrl(string url)
+        {
+            string fileName = System.IO.Path.GetFileName(new Uri(url).AbsolutePath);
+            if (string.IsNullOrEmpty(fileName))
+                fileName = "asset";
+
+            string ext = System.IO.Path.GetExtension(fileName);
+            if (!SupportedAssetExtensions.Contains(ext))
+            {
+                _statusMessage = $"Unsupported file type: {ext} (supported: .png, .fnt, .ttf)";
+                _statusColor = ColorError;
+                return;
+            }
+
+            _isFetchingAssetUrl = true;
+            _statusMessage = $"Fetching {fileName}...";
+            _statusColor = ColorPending;
+            StateHasChanged();
+
+            try
+            {
+                byte[] data = await Http.GetByteArrayAsync(url);
+
+                if (data.Length > 10 * 1024 * 1024)
+                {
+                    _statusMessage = $"File too large: {fileName} (max 10 MB)";
+                    _statusColor = ColorError;
+                    return;
+                }
+
+                InMemoryContentManager.AddFile(fileName, data);
+
+                string[] fntTextures = null;
+                if (fileName.EndsWith(".fnt", StringComparison.OrdinalIgnoreCase))
+                    fntTextures = ParseFntTextures(data);
+
+                _assets.RemoveAll(a => string.Equals(a.FileName, fileName, StringComparison.OrdinalIgnoreCase));
+                _assets.Add(new AssetInfo { FileName = fileName, Size = data.Length, FntTextures = fntTextures, SourceUrl = url });
+                _assetsOpen = true;
+
+                _statusMessage = $"Loaded: {fileName}";
+                _statusColor = ColorSuccess;
+            }
+            catch (HttpRequestException e)
+            {
+                string hint = e.Message.Contains("TypeError") ? " (CORS blocked?)" : "";
+                _statusMessage = $"Failed to fetch {fileName}{hint}";
+                _statusColor = ColorError;
+            }
+            catch (Exception e)
+            {
+                _statusMessage = $"Failed to fetch {fileName}: {e.Message}";
+                _statusColor = ColorError;
+            }
+            finally
+            {
+                _isFetchingAssetUrl = false;
+            }
+        }
+
+        private async Task FetchAssetUrls(string[] urls)
+        {
+            for (int i = 0; i < urls.Length; i++)
+            {
+                await FetchAndAddAssetUrl(urls[i]);
+                if (_statusColor == ColorError) break;
+            }
         }
 
         [JSInvokable]
@@ -510,7 +650,7 @@ namespace XnaFiddle.Pages
                 string code = await JsRuntime.InvokeAsync<string>("monacoInterop.getValue");
 
                 _shareCodeEncoded = UrlCodec.Encode(code);
-                _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded;
+                _shareCodeUrl = "https://xnafiddle.net/#code=" + _shareCodeEncoded + GetAssetUrlsFragment();
 
                 _revertResult = SnippetReverter.Revert(code);
                 _snipMembers     = !string.IsNullOrWhiteSpace(_revertResult?.Members);
@@ -588,7 +728,8 @@ namespace XnaFiddle.Pages
             }
             else
             {
-                await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#code={_shareCodeEncoded}')");
+                string assetsFragment = GetAssetUrlsFragment();
+                await JsRuntime.InvokeVoidAsync("eval", $"history.replaceState(null,'','#code={_shareCodeEncoded}{assetsFragment}')");
             }
 
             await CopyToClipboard(url);

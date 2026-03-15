@@ -111,42 +111,54 @@
     @if (_assetsOpen)
     {
         <div style="padding: 4px 12px; background: #252526; border-bottom: 1px solid #333; flex-shrink: 0;
-                    display: flex; flex-wrap: wrap; align-items: center; gap: 6px; min-height: 28px;">
-            @if (_assets.Count == 0)
-            {
-                <span style="color: #888; font-size: 12px; font-style: italic;">Drop files onto the canvas &mdash; supported: <span style="font-style: normal; color: #9cdcfe;">.png &nbsp;.fnt &nbsp;.ttf</span></span>
-            }
-            else
-            {
-                @foreach (var asset in _assets)
+                    display: flex; flex-direction: column; gap: 4px; min-height: 28px;">
+            <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
+                @if (_assets.Count == 0)
                 {
-                    var name = asset.FileName;
-                    var nameNoExt = System.IO.Path.GetFileNameWithoutExtension(name);
-                    var loadCode = $"Content.Load<Texture2D>(\"{nameNoExt}\")";
-                    var sizeKb = asset.Size < 1024 ? asset.Size + " B" : (asset.Size / 1024) + " KB";
-                    <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
-                                background: #3c3c3c; border-radius: 3px; font-size: 12px; color: #d4d4d4;">
-                        <span @onclick="() => CopyToClipboard(loadCode)"
-                              style="color: #9cdcfe; cursor: pointer;"
-                              title="Click to copy load code">@name</span>
-                        <span style="color: #888;">@sizeKb</span>
-                        @if (asset.FntTextures != null)
-                        {
-                            foreach (var tex in asset.FntTextures)
+                    <span style="color: #888; font-size: 12px; font-style: italic;">Drop files onto the canvas or add by URL &mdash; supported: <span style="font-style: normal; color: #9cdcfe;">.png &nbsp;.fnt &nbsp;.ttf</span></span>
+                }
+                else
+                {
+                    @foreach (var asset in _assets)
+                    {
+                        var name = asset.FileName;
+                        var nameNoExt = System.IO.Path.GetFileNameWithoutExtension(name);
+                        var loadCode = $"Content.Load<Texture2D>(\"{nameNoExt}\")";
+                        var sizeKb = asset.Size < 1024 ? asset.Size + " B" : (asset.Size / 1024) + " KB";
+                        <span style="display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px;
+                                    background: #3c3c3c; border-radius: 3px; font-size: 12px; color: #d4d4d4;">
+                            <span @onclick="() => CopyToClipboard(loadCode)"
+                                  style="color: @(!string.IsNullOrEmpty(asset.SourceUrl) ? "#dcdcaa" : "#9cdcfe"); cursor: pointer;"
+                                  title="@(!string.IsNullOrEmpty(asset.SourceUrl) ? asset.SourceUrl + " — click to copy load code" : "Click to copy load code")">@name</span>
+                            <span style="color: #888;">@sizeKb</span>
+                            @if (asset.FntTextures != null)
                             {
-                                if (!InMemoryContentManager.Files.ContainsKey(tex))
+                                foreach (var tex in asset.FntTextures)
                                 {
-                                    <span style="color: #f48771;" title="Missing texture — drop this file onto the canvas">&#9888; @tex</span>
+                                    if (!InMemoryContentManager.Files.ContainsKey(tex))
+                                    {
+                                        <span style="color: #f48771;" title="Missing texture — drop this file onto the canvas">&#9888; @tex</span>
+                                    }
                                 }
                             }
-                        }
-                        <button @onclick="() => RemoveAsset(name)"
-                                style="background: none; border: none; color: #888; cursor: pointer;
-                                       font-size: 14px; padding: 0 2px; line-height: 1;"
-                                title="Remove">&times;</button>
-                    </span>
+                            <button @onclick="() => RemoveAsset(name)"
+                                    style="background: none; border: none; color: #888; cursor: pointer;
+                                           font-size: 14px; padding: 0 2px; line-height: 1;"
+                                    title="Remove">&times;</button>
+                        </span>
+                    }
                 }
-            }
+            </div>
+            <div style="display: flex; align-items: center; gap: 6px;">
+                <input @bind="_assetUrlInput" @onkeydown="OnAssetUrlKeyDown" placeholder="https://raw.githubusercontent.com/...  (.png, .fnt, .ttf)"
+                       style="flex: 1; padding: 2px 8px; background: #3c3c3c; color: #d4d4d4;
+                              border: 1px solid #555; font-size: 12px; font-family: Consolas, monospace;" />
+                <button @onclick="FetchAssetFromUrl" disabled="@_isFetchingAssetUrl"
+                        style="padding: 2px 10px; background: #0e639c; color: white; border: none;
+                               cursor: pointer; font-size: 12px; white-space: nowrap;">
+                    @(_isFetchingAssetUrl ? "Fetching..." : "Add URL")
+                </button>
+            </div>
         </div>
     }
 
