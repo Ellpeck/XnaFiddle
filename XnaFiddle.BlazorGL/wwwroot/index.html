@@ -277,6 +277,23 @@
             }
         };
 
+        // Block mouse events that originate inside the editor panel from reaching KNI.
+        // KNI registers its listeners on window (bubbling phase). Listening on document
+        // (one level below window) and calling stopPropagation() prevents those events
+        // from reaching window. We check the target dynamically so this works even though
+        // Blazor renders #editorPanel after DOMContentLoaded.
+        (function () {
+            var mouseEvents = ['mousemove', 'mousedown', 'mouseup', 'mousewheel', 'wheel'];
+            mouseEvents.forEach(function (type) {
+                document.addEventListener(type, function (e) {
+                    var editorPanel = document.getElementById('editorPanel');
+                    if (editorPanel && editorPanel.contains(e.target)) {
+                        e.stopPropagation();
+                    }
+                });
+            });
+        })();
+
         window.initRenderJS = (instance) => {
             // KNI's JS files (Canvas.8.0.10.js etc.) expect the Emscripten Module object on
             // globalThis. Blazor no longer exposes it there by default, so we bridge the gap.
