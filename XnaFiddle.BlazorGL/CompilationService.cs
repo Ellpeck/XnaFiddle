@@ -54,6 +54,7 @@ namespace XnaFiddle
             "FontStashSharp.Base",
             "FontStashSharp.Rasterizers.StbTrueTypeSharp",
             "KNI.Extended",
+            "Aether.Physics2D",
         ];
 
         public class DiagnosticInfo
@@ -108,6 +109,7 @@ namespace XnaFiddle
                 ("KNI.Extended",     ["KNI.Extended"]),
                 ("Apos.Shapes.KNI",  ["Apos.Shapes.KNI"]),
                 ("FontStashSharp.Kni", ["FontStashSharp.Kni", "FontStashSharp.Base"]),
+                ("Aether.Physics2D",  ["Aether.Physics2D"]),
             ];
             string versionInfo = string.Join("  ·  ",
                 versionTargets.Select(t => $"{t.Label} {t.AsmNames.Select(GetAssemblyVersion).FirstOrDefault(v => v != "?" && v != "0.0.0.0" && v != "0.0.0") ?? GetAssemblyVersion(t.AsmNames[0])}"));

@@ -91,6 +91,7 @@ public class MyGame : Game
         y += 50;
         var animFont = fontSystem.GetFont(24);
         string animText = "Dynamic text rendering!";
+        float ax = 20;
         for (int i = 0; i < animText.Length; i++)
         {
             float offset = MathF.Sin(time * 3f + i * 0.4f) * 8f;
@@ -98,7 +99,8 @@ public class MyGame : Game
             Color c = HsvToColor(hue, 0.7f, 1f);
             string ch = animText[i].ToString();
             spriteBatch.DrawString(animFont, ch,
-                new Vector2(20 + i * 14, y + offset), c);
+                new Vector2(ax, y + offset), c);
+            ax += animFont.MeasureString(ch).X;
         }
 
         spriteBatch.End();

@@ -28,21 +28,17 @@ namespace XnaFiddle
         /// </summary>
         public static readonly ExampleInfo[] Catalog =
         [
+            // Basics (always first)
             new ExampleInfo { Name = "BouncingBall",    Category = "Basics", Description = "A ball that bounces off the edges of the screen" },
             new ExampleInfo { Name = "MouseTrail",      Category = "Basics", Description = "Trail of circles that follow the mouse cursor" },
             new ExampleInfo { Name = "TextureLoading",  Category = "Basics", Description = "Load and display a texture from a file" },
 
-            // Gum
-            new ExampleInfo { Name = "GumUI",           Category = "Gum",     Description = "UI layout with buttons and text using Gum" },
-
-            // Apos.Shapes
-            new ExampleInfo { Name = "AposShapes",      Category = "Apos.Shapes", Description = "Draw shapes with the Apos.Shapes library" },
-
-            // FontStashSharp
-            new ExampleInfo { Name = "FontStashSharp", Category = "FontStashSharp", Description = "Dynamic text rendering with multiple sizes and colors" },
-
-            // MonoGame.Extended
-            new ExampleInfo { Name = "Camera2D (MonoGame.Extended)", Category = "MonoGame.Extended", Description = "Pan and zoom a 2D camera with keyboard and mouse" },
+            // Libraries (alphabetical)
+            new ExampleInfo { Name = "AetherPhysics",                Category = "Aether.Physics2D",  Description = "2D physics simulation with a bouncing ball and keyboard controls" },
+            new ExampleInfo { Name = "AposShapes",                   Category = "Apos.Shapes",       Description = "Draw shapes with the Apos.Shapes library" },
+            new ExampleInfo { Name = "FontStashSharp",               Category = "FontStashSharp",     Description = "Dynamic text rendering with multiple sizes and colors" },
+            new ExampleInfo { Name = "GumUI",                        Category = "Gum",                Description = "UI layout with buttons and text using Gum" },
+            new ExampleInfo { Name = "Camera2D (MonoGame.Extended)", Category = "MonoGame.Extended",  Description = "Pan and zoom a 2D camera with keyboard and mouse" },
         ];
 
         /// <summary>
@@ -51,6 +47,13 @@ namespace XnaFiddle
         public static readonly string[] Categories = Catalog
             .Select(e => e.Category)
             .Distinct()
+            .ToArray();
+
+        /// <summary>
+        /// Library categories (everything after "Basics"), in catalog order.
+        /// </summary>
+        public static readonly string[] LibraryCategories = Categories
+            .Where(c => c != "Basics")
             .ToArray();
 
         private static string[] GetExampleNames()
