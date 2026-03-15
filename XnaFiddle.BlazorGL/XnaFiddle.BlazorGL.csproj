@@ -35,6 +35,8 @@
   <ItemGroup>
     <Compile Remove="Examples\**" />
     <EmbeddedResource Include="Examples\*.cs" />
+    <!-- Embed non-code assets alongside examples (e.g. TextureLoading.KniIcon.png) -->
+    <EmbeddedResource Include="Examples\*.*" Exclude="Examples\*.cs" />
   </ItemGroup>
 
   <!-- Generate BuildInfo.g.cs with the UTC build timestamp into obj/ -->

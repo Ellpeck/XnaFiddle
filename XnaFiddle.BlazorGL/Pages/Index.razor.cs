@@ -59,6 +59,8 @@ namespace XnaFiddle.Pages
         DateTime _compileStartTime;
         bool _hasCompiledOnce;
         string _selectedExample = "";
+        bool _exampleBrowserOpen;
+        string _selectedCategory = "";
 
         struct AssetInfo
         {
@@ -125,7 +127,7 @@ namespace XnaFiddle.Pages
                     }
                 }
 
-                string defaultCode = ExampleGallery.Load("ColorCycle") ?? "";
+                string defaultCode = ExampleGallery.Load("BouncingBall") ?? "";
                 await JsRuntime.InvokeVoidAsync("monacoInterop.init", "monacoContainer", defaultCode);
                 _monacoReady = true;
                 var dotNetRef = DotNetObjectReference.Create(this);
@@ -144,6 +146,7 @@ namespace XnaFiddle.Pages
                     {
                         await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", exCode);
                         _selectedExample = exampleFromQuery;
+                        LoadExampleAssets(exampleFromQuery);
                         autoCompile = true;
                     }
                 }
@@ -787,9 +790,28 @@ namespace XnaFiddle.Pages
             }
         }
 
-        private async Task OnExampleSelected(ChangeEventArgs e)
+        private void OpenExampleBrowser()
         {
-            string name = e.Value?.ToString();
+            // Default to the category of the currently selected example, or the first category
+            if (!string.IsNullOrEmpty(_selectedExample))
+            {
+                for (int i = 0; i < ExampleGallery.Catalog.Length; i++)
+                {
+                    if (ExampleGallery.Catalog[i].Name == _selectedExample)
+                    {
+                        _selectedCategory = ExampleGallery.Catalog[i].Category;
+                        break;
+                    }
+                }
+            }
+            if (string.IsNullOrEmpty(_selectedCategory) && ExampleGallery.Categories.Length > 0)
+                _selectedCategory = ExampleGallery.Categories[0];
+
+            _exampleBrowserOpen = true;
+        }
+
+        private async Task SelectExample(string name)
+        {
             if (string.IsNullOrEmpty(name) || !_monacoReady)
                 return;
 
@@ -797,6 +819,7 @@ namespace XnaFiddle.Pages
             if (code != null)
             {
                 _selectedExample = name;
+                _exampleBrowserOpen = false;
                 await JsRuntime.InvokeVoidAsync("monacoInterop.setValue", code);
                 await JsRuntime.InvokeVoidAsync("eval",
                     $"history.replaceState(null,'','?example={Uri.EscapeDataString(name)}')");
@@ -807,11 +830,29 @@ namespace XnaFiddle.Pages
                 _diagnosticsOutput = "";
                 await JsRuntime.InvokeVoidAsync("clearCanvas");
 
+                LoadExampleAssets(name);
+
                 if (_runLocallyOpen)
                     RefreshRunLocallyPackages(code);
 
-                StateHasChanged();
+                CompileAndRun();
             }
+        }
+
+        private void LoadExampleAssets(string exampleName)
+        {
+            ExampleAsset[] assets = ExampleGallery.LoadAssets(exampleName);
+            if (assets.Length == 0) return;
+
+            for (int i = 0; i < assets.Length; i++)
+            {
+                InMemoryContentManager.AddFile(assets[i].FileName, assets[i].Data);
+
+                // Update the UI asset list (same as drag-and-drop path)
+                _assets.RemoveAll(a => string.Equals(a.FileName, assets[i].FileName, System.StringComparison.OrdinalIgnoreCase));
+                _assets.Add(new AssetInfo { FileName = assets[i].FileName, Size = assets[i].Data.Length });
+            }
+            _assetsOpen = true;
         }
 
 

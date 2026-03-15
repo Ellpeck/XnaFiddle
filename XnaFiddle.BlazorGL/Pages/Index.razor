@@ -30,16 +30,13 @@
             <i class="codicon @(_isCompiling ? "codicon-loading codicon-modifier-spin" : "codicon-play")"></i>
             @(_isCompiling ? "Running..." : "Run")
         </button>
-        <select @onchange="OnExampleSelected" value="@_selectedExample"
-                style="padding: 3px 8px; background: #3c3c3c; color: #d4d4d4; border: 1px solid #555;
-                       font-size: 13px; cursor: pointer; user-select: none; -webkit-user-select: none;
-                       max-width: 140px;">
-            <option value="">Examples...</option>
-            @foreach (var name in ExampleGallery.Names)
-            {
-                <option value="@name">@name</option>
-            }
-        </select>
+        <button @onclick="OpenExampleBrowser"
+                style="padding: 4px 8px; background: @(_exampleBrowserOpen ? "#0e639c" : "#3c3c3c"); color: #d4d4d4;
+                       border: 1px solid #555; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 5px;
+                       user-select: none; -webkit-user-select: none;">
+            <i class="codicon codicon-library"></i>
+            @(string.IsNullOrEmpty(_selectedExample) ? "Examples" : _selectedExample)
+        </button>
         <button @onclick="OpenShareDialog" title="Share"
                 style="padding: 4px 8px; background: @(_shareOpen ? "#0e639c" : "#3c3c3c"); color: #d4d4d4;
                        border: 1px solid #555; cursor: pointer; font-size: 14px; display: flex; align-items: center;">
@@ -352,6 +349,63 @@
         <pre id="diagnosticsPanel" style="margin: 0; padding: 8px 12px; background: #1a1a1a; color: @_diagnosticsColor;
                     font-size: 12px; font-family: Consolas, monospace; overflow: auto;
                     height: 100px; flex-shrink: 0; white-space: pre-wrap; word-wrap: break-word;">@_diagnosticsOutput</pre>
+    }
+
+    @if (_exampleBrowserOpen)
+    {
+        <div @onclick="() => _exampleBrowserOpen = false"
+             style="position: absolute; inset: 0; background: rgba(0,0,0,0.5); z-index: 100;
+                    display: flex; align-items: center; justify-content: center;">
+            <div @onclick:stopPropagation="true"
+                 style="background: #252526; border: 1px solid #444; border-radius: 6px;
+                        width: 90%; max-width: 600px; min-height: 350px; max-height: 80%; display: flex; flex-direction: column;
+                        box-shadow: 0 8px 32px rgba(0,0,0,0.5); overflow: hidden;">
+                <div style="padding: 10px 16px; background: #2d2d2d; border-bottom: 1px solid #333;
+                            display: flex; align-items: center; justify-content: space-between; flex-shrink: 0;">
+                    <span style="color: #d4d4d4; font-size: 14px; font-weight: 500;">Examples</span>
+                    <button @onclick="() => _exampleBrowserOpen = false"
+                            style="background: none; border: none; color: #888; cursor: pointer; font-size: 16px; padding: 0 4px;">&times;</button>
+                </div>
+                <div style="display: flex; flex: 1; min-height: 0; overflow: hidden;">
+                    @* Category sidebar *@
+                    <div style="min-width: 140px; max-width: 160px; background: #1e1e1e; border-right: 1px solid #333;
+                                overflow-y: auto; flex-shrink: 0; padding: 6px 0;">
+                        @foreach (var category in ExampleGallery.Categories)
+                        {
+                            var isActive = category == _selectedCategory;
+                            <div @onclick="() => _selectedCategory = category"
+                                 style="padding: 6px 14px; cursor: pointer; font-size: 13px;
+                                        color: @(isActive ? "#fff" : "#aaa");
+                                        background: @(isActive ? "#0e639c" : "transparent");
+                                        border-left: 3px solid @(isActive ? "#007acc" : "transparent");
+                                        transition: background 0.1s;"
+                                 onmouseover="@(isActive ? "" : "this.style.background='#2a2a2a'")"
+                                 onmouseout="@(isActive ? "" : "this.style.background='transparent'")">
+                                @category
+                            </div>
+                        }
+                    </div>
+                    @* Example cards *@
+                    <div style="flex: 1; overflow-y: auto; padding: 10px;">
+                        @foreach (var example in ExampleGallery.Catalog)
+                        {
+                            if (example.Category != _selectedCategory) continue;
+                            var isSelected = example.Name == _selectedExample;
+                            <div @onclick="() => SelectExample(example.Name)"
+                                 style="padding: 10px 14px; margin-bottom: 6px; cursor: pointer;
+                                        background: @(isSelected ? "#0e639c33" : "#2d2d2d");
+                                        border: 1px solid @(isSelected ? "#0e639c" : "#3c3c3c");
+                                        border-radius: 4px; transition: border-color 0.1s, background 0.1s;"
+                                 onmouseover="this.style.borderColor='#007acc'"
+                                 onmouseout="this.style.borderColor='@(isSelected ? "#0e639c" : "#3c3c3c")'">
+                                <div style="color: #d4d4d4; font-size: 13px; font-weight: 500;">@example.Name</div>
+                                <div style="color: #888; font-size: 12px; margin-top: 3px;">@example.Description</div>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
     }
 </div>
 } @* end @if (!_embedMode) *@
