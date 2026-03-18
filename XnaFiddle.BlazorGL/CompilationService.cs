@@ -100,12 +100,17 @@ namespace XnaFiddle
 
             SyntaxTree syntaxTree = CSharpSyntaxTree.ParseText(sourceCode, parseOptions);
 
-            // Force-load optional assemblies (Gum, Shapes, Extended) into the AppDomain.
+            // Force-load optional assemblies into the AppDomain.
             // Blazor WASM lazy-loads assemblies; without this they may not be present when
             // a #code= link is opened on a fresh page, causing silent metadata-fetch failures.
             for (int i = 0; i < KniAssemblyNames.Length; i++)
             {
                 try { Assembly.Load(KniAssemblyNames[i]); }
+                catch { /* already loaded, or genuinely absent — handled below */ }
+            }
+            for (int i = 0; i < BclAssemblyNames.Length; i++)
+            {
+                try { Assembly.Load(BclAssemblyNames[i]); }
                 catch { /* already loaded, or genuinely absent — handled below */ }
             }
 
@@ -139,6 +144,10 @@ namespace XnaFiddle
             // Add KNI assemblies that may not be loaded yet due to lazy loading
             for (int i = 0; i < KniAssemblyNames.Length; i++)
                 assembliesRequired.Add(KniAssemblyNames[i]);
+
+            // Add BCL assemblies needed for type-forwarding resolution
+            for (int i = 0; i < BclAssemblyNames.Length; i++)
+                assembliesRequired.Add(BclAssemblyNames[i]);
 
             // Fetch metadata references
             List<MetadataReference> metadataReferences = [];
