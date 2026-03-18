@@ -23,6 +23,14 @@ namespace XnaFiddle
             _navigationManager = navigationManager;
         }
 
+        // BCL assemblies that users may need but aren't loaded by XnaFiddle's own code.
+        // Without these, Roslyn can't resolve types forwarded to these assemblies.
+        private static readonly string[] BclAssemblyNames =
+        [
+            "System.ObjectModel",          // ObservableCollection<T>
+            "System.Linq.Expressions",     // Expression trees (used by some binding APIs)
+        ];
+
         // KNI assemblies that exist in _framework/ but may not be loaded into the AppDomain
         // yet due to lazy loading (no game is running when the user first compiles).
         private static readonly string[] KniAssemblyNames =

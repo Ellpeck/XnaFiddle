@@ -205,6 +205,21 @@ Drops to 2fps when the mouse is not over the canvas, and jumps back to full spee
 
 ---
 
+## Sandbox Restrictions
+
+User code runs in a sandboxed environment. Certain namespaces, types, and methods are blocked at compile time to prevent misuse. The full list is maintained in [`SecurityChecker.cs`](XnaFiddle.BlazorGL/SecurityChecker.cs).
+
+Notable restrictions:
+
+- **Expression trees** (`System.Linq.Expressions`) — blocked entirely. APIs like Gum's `Binding` class that offer both expression-based and string-based overloads will work with the string-based overload only (e.g. `new Binding("PropertyName")` instead of `new Binding<T>(vm => vm.PropertyName)`).
+- **Reflection and dynamic** — `System.Reflection`, `System.Reflection.Emit`, and the `dynamic` keyword are all blocked.
+- **Networking** — `System.Net` is blocked; user code cannot make HTTP requests or open sockets.
+- **File system** — `System.IO.File`, `System.IO.Directory`, and `System.IO.FileStream` are blocked. `MemoryStream` and `BinaryReader` are available.
+- **Threading** — `Thread`, `Task.Run`, `Task.Start`, and thread pool methods are blocked. The WASM runtime is single-threaded.
+- **JS interop** — `Microsoft.JSInterop` and the `nkast.Wasm.*` platform namespaces are blocked.
+
+---
+
 ## Development
 
 ### Setup
