@@ -115,7 +115,7 @@
             <div style="display: flex; flex-wrap: wrap; align-items: center; gap: 6px;">
                 @if (_assets.Count == 0)
                 {
-                    <span style="color: #888; font-size: 12px; font-style: italic;">Drop files onto the canvas or add by URL &mdash; supported: <span style="font-style: normal; color: #9cdcfe;">.png &nbsp;.fnt &nbsp;.ttf</span></span>
+                    <span style="color: #888; font-size: 12px; font-style: italic;">Drop files onto the canvas or add by URL &mdash; supported: <span style="font-style: normal; color: #9cdcfe;">@string.Join(" \u00A0", SupportedAssetExtensions)</span></span>
                 }
                 else
                 {
@@ -150,7 +150,7 @@
                 }
             </div>
             <div style="display: flex; align-items: center; gap: 6px;">
-                <input @bind="_assetUrlInput" @onkeydown="OnAssetUrlKeyDown" placeholder="https://raw.githubusercontent.com/...  (.png, .fnt, .ttf)"
+                <input @bind="_assetUrlInput" @onkeydown="OnAssetUrlKeyDown" placeholder="@($"https://raw.githubusercontent.com/...  ({SupportedExtensionsDisplay})")"
                        style="flex: 1; padding: 2px 8px; background: #3c3c3c; color: #d4d4d4;
                               border: 1px solid #555; font-size: 12px; font-family: Consolas, monospace;" />
                 <button @onclick="FetchAssetFromUrl" disabled="@_isFetchingAssetUrl"

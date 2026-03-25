@@ -208,8 +208,11 @@ namespace XnaFiddle.Pages
 
         static readonly HashSet<string> SupportedAssetExtensions = new(StringComparer.OrdinalIgnoreCase)
         {
-            ".png", ".fnt", ".ttf"
+            ".png", ".fnt", ".ttf", ".ember"
         };
+
+        static readonly string SupportedExtensionsDisplay =
+            string.Join(", ", SupportedAssetExtensions);
 
         [JSInvokable]
         public void TriggerCompileAndRun()
@@ -273,7 +276,7 @@ namespace XnaFiddle.Pages
             string ext = System.IO.Path.GetExtension(fileName);
             if (!SupportedAssetExtensions.Contains(ext))
             {
-                _statusMessage = $"Unsupported file: {fileName} (supported: .png, .fnt, .ttf)";
+                _statusMessage = $"Unsupported file: {fileName} (supported: {SupportedExtensionsDisplay})";
                 _statusColor = ColorError;
                 _assetsOpen = true;
                 StateHasChanged();
@@ -385,7 +388,7 @@ namespace XnaFiddle.Pages
             string ext = System.IO.Path.GetExtension(fileName);
             if (!SupportedAssetExtensions.Contains(ext))
             {
-                _statusMessage = $"Unsupported file type: {ext} (supported: .png, .fnt, .ttf)";
+                _statusMessage = $"Unsupported file type: {ext} (supported: {SupportedExtensionsDisplay})";
                 _statusColor = ColorError;
                 return;
             }
