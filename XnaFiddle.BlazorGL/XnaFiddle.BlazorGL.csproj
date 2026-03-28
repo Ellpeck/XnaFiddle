@@ -19,7 +19,7 @@
     <PackageReference Include="Aether.Physics2D.KNI" Version="2.2.0" />
     <PackageReference Include="Apos.Shapes.KNI" Version="0.6.8" />
     <PackageReference Include="FontStashSharp.Kni" Version="1.5.4" />
-    <PackageReference Include="Gum.KNI" Version="2026.3.23.1" />
+    <PackageReference Include="Gum.KNI" Version="2026.3.28.1" />
     <PackageReference Include="KNI.Extended" Version="5.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.17" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.17" PrivateAssets="all" />

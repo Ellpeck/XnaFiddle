@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.CodeAnalysis;
@@ -85,7 +86,7 @@ namespace XnaFiddle
             public string VersionInfo { get; set; }
         }
 
-        public async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null)
+        public async Task<CompilationResult> CompileAsync(string sourceCode, Action<int, int> onProgress = null, CancellationToken cancellationToken = default)
         {
             // Always create a fresh service so cached failure results from a previous
             // compile don't permanently hide assemblies that are now loaded.
@@ -157,6 +158,7 @@ namespace XnaFiddle
 
             foreach (string assemblyName in assembliesRequired)
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 AssemblyDetails assemblyDetails = new() { Name = assemblyName };
                 try
                 {

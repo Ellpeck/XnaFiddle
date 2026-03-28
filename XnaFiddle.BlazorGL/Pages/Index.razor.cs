@@ -5,6 +5,7 @@ using System.Net.Http.Json;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Threading;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
@@ -30,6 +31,7 @@ namespace XnaFiddle.Pages
         string _statusMessage = "";
         string _statusColor = ColorSuccess;
         bool _isCompiling;
+        CancellationTokenSource _compileCts;
         bool _pendingCompile;
         int _compileThrottleFrame;
         bool _monacoReady;
@@ -515,6 +517,7 @@ namespace XnaFiddle.Pages
                 return;
 
             _isCompiling = true;
+            _compileCts = new CancellationTokenSource();
             _pendingCompile = true;
             _diagnosticsOutput = "";
             _statusMessage = "Compiling...";
@@ -523,6 +526,11 @@ namespace XnaFiddle.Pages
             _compileTotal = 0;
             _compileStartTime = DateTime.Now;
             StateHasChanged();
+        }
+
+        private void StopCompilation()
+        {
+            _compileCts?.Cancel();
         }
 
         private async Task DoCompileAndRun()
@@ -536,7 +544,7 @@ namespace XnaFiddle.Pages
                     _compileProgress = current;
                     _compileTotal = total;
                     StateHasChanged();
-                });
+                }, _compileCts.Token);
                 await JsRuntime.InvokeVoidAsync("compileTimerInterop.stop");
                 double compileSeconds = (DateTime.Now - _compileStartTime).TotalSeconds;
                 _hasCompiledOnce = true;
@@ -583,6 +591,9 @@ namespace XnaFiddle.Pages
                         newGame.Content = new InMemoryContentManager(newGame.Services);
                         try
                         {
+                            // Force a DOM render flush so the "Loading game..." status appears
+                            // before the potentially-blocking Run() call.
+                            await Task.Delay(1);
                             newGame.Run();
                         }
                         catch (Exception runEx)
@@ -606,6 +617,13 @@ namespace XnaFiddle.Pages
                     _statusMessage = "Compilation failed.";
                     _statusColor = ColorError;
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                _statusMessage = "Cancelled.";
+                _statusColor = ColorMuted;
+                _diagnosticsOutput = "Compilation cancelled by user.";
+                _diagnosticsColor = ColorMuted;
             }
             catch (Exception e)
             {
