@@ -19,7 +19,8 @@
     <PackageReference Include="Aether.Physics2D.KNI" Version="2.2.0" />
     <PackageReference Include="Apos.Shapes.KNI" Version="0.6.8" />
     <PackageReference Include="FontStashSharp.Kni" Version="1.5.4" />
-    <PackageReference Include="Gum.KNI" Version="2026.3.28.1" />
+    <PackageReference Include="Gum.KNI" Version="2026.3.28.2" />
+    <PackageReference Include="KernSmith.KniGum" Version="0.10.3-dev" />
     <PackageReference Include="KNI.Extended" Version="5.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.17" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.17" PrivateAssets="all" />
@@ -46,10 +47,7 @@
     <PropertyGroup>
       <_BuildTimestamp>$([System.DateTime]::UtcNow.ToString("yyyy-MM-ddTHH:mmZ"))</_BuildTimestamp>
     </PropertyGroup>
-    <WriteLinesToFile
-      File="$(IntermediateOutputPath)BuildInfo.g.cs"
-      Lines="namespace XnaFiddle { public static class BuildInfo { public const string BuildTime = &quot;$(_BuildTimestamp)&quot;%3B } }"
-      Overwrite="true" />
+    <WriteLinesToFile File="$(IntermediateOutputPath)BuildInfo.g.cs" Lines="namespace XnaFiddle { public static class BuildInfo { public const string BuildTime = &quot;$(_BuildTimestamp)&quot;%3B } }" Overwrite="true" />
     <ItemGroup>
       <Compile Include="$(IntermediateOutputPath)BuildInfo.g.cs" />
     </ItemGroup>
