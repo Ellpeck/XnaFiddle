@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
+﻿<Project Sdk="Microsoft.NET.Sdk.BlazorWebAssembly">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -20,13 +20,15 @@
     <PackageReference Include="Apos.Shapes.KNI" Version="0.6.8" />
     <PackageReference Include="FontStashSharp.Kni" Version="1.5.4" />
     <PackageReference Include="Gum.KNI" Version="2026.3.28.2" />
-    <PackageReference Include="KernSmith.KniGum" Version="0.10.3-dev" />
     <PackageReference Include="KNI.Extended" Version="5.5.0" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.17" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.17" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="KernSmith" Version="0.12.0" />
+    <PackageReference Include="KernSmith.KniGum" Version="0.12.0" />
+    <PackageReference Include="KernSmith.Rasterizers.StbTrueType" Version="0.12.0" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageReference Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
   </ItemGroup>

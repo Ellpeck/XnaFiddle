@@ -58,7 +58,8 @@ public class MyGame : Game
             var testResult = BmFont.GenerateFromSystem("Droid Sans", new FontGeneratorOptions
             {
                 Size = 24,
-                Characters = CharacterSet.FromRanges((32, 126))
+                Characters = CharacterSet.FromRanges((32, 126)),
+                Backend = RasterizerBackend.StbTrueType
             });
             Console.WriteLine($"[DynamicFonts] Direct generation OK: {testResult.Pages.Count} pages, {testResult.Model.Characters.Count} chars");
         }
@@ -67,9 +68,10 @@ public class MyGame : Game
             Console.WriteLine($"[DynamicFonts] Direct generation FAILED: {ex}");
         }
 
-        // Wire up KernSmith for in-memory font generation
+        // Wire up KernSmith for in-memory font generation.
+        // StbTrueType backend is required for Blazor WASM (no native FreeType binary).
         CustomSetPropertyOnRenderable.InMemoryFontCreator =
-            new KernSmithFontCreator(GraphicsDevice);
+            new KernSmithFontCreator(GraphicsDevice, RasterizerBackend.StbTrueType);
         Console.WriteLine("[DynamicFonts] KernSmithFontCreator initialized");
 
         BuildUI();
