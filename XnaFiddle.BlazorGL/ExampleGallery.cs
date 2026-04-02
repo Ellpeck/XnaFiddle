@@ -37,6 +37,7 @@ namespace XnaFiddle
             new ExampleInfo { Name = "AetherPhysics",                Category = "Aether.Physics2D",  Description = "2D physics simulation with a bouncing ball and keyboard controls" },
             new ExampleInfo { Name = "AposShapes",                   Category = "Apos.Shapes",       Description = "Draw shapes with the Apos.Shapes library" },
             new ExampleInfo { Name = "FontStashSharp",               Category = "FontStashSharp",     Description = "Dynamic text rendering with multiple sizes and colors" },
+            new ExampleInfo { Name = "DynamicFonts",                    Category = "Gum",                Description = "Runtime font generation with KernSmith — pick family, size, bold, italic, and outline" },
             new ExampleInfo { Name = "GumUI",                        Category = "Gum",                Description = "UI layout with buttons and text using Gum" },
             new ExampleInfo { Name = "Camera2D (MonoGame.Extended)", Category = "MonoGame.Extended",  Description = "Pan and zoom a 2D camera with keyboard and mouse" },
         ];
