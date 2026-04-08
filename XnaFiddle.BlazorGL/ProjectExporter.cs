@@ -216,11 +216,10 @@ namespace XnaFiddle
                 });
             }
 
-            // KernSmith — using-directive scan, KNI-only
-            if (isKni && source.Contains("KernSmith"))
+            if (source.Contains("KernSmith"))
             {
                 packages.Add(new NuGetPackage { Id = "KernSmith", Version = PackageVersions.KernSmith });
-                packages.Add(new NuGetPackage { Id = "KernSmith.KniGum", Version = PackageVersions.KernSmith });
+                packages.Add(new NuGetPackage { Id = isKni ? "KernSmith.KniGum" : "KernSmith.MonoGameGum", Version = PackageVersions.KernSmith });
                 packages.Add(new NuGetPackage { Id = "KernSmith.Rasterizers.StbTrueType", Version = PackageVersions.KernSmith });
             }
 

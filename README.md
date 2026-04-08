@@ -205,6 +205,21 @@ Drops to 2fps when the mouse is not over the canvas, and jumps back to full spee
 
 ---
 
+## Export
+
+Click the **Export** button in the toolbar to download your fiddle as a complete, buildable project (`.zip`). Choose a runtime and platform:
+
+| Runtime | Platforms |
+|---|---|
+| KNI | DesktopGL, WindowsDX, Android, BlazorGL (Browser) |
+| MonoGame | DesktopGL, WindowsDX, Android |
+
+The exported project includes the correct NuGet packages, entry point (`Program.cs` / `Activity1.cs` / `Index.razor`), and any assets you've loaded. Third-party libraries (Gum, Apos.Shapes, MonoGame.Extended, FontStashSharp, Aether.Physics2D, KernSmith) are detected automatically from your code and included in the `.csproj`.
+
+Library versions are centralized in the `<PropertyGroup>` at the top of `XnaFiddle.BlazorGL.csproj` — update them there and both XnaFiddle and exported projects stay in sync via the auto-generated `PackageVersions` class.
+
+---
+
 ## Sandbox Restrictions
 
 User code runs in a sandboxed environment. Certain namespaces, types, and methods are blocked at compile time to prevent misuse. The full list is maintained in [`SecurityChecker.cs`](XnaFiddle.BlazorGL/SecurityChecker.cs).
@@ -256,6 +271,12 @@ The `Apos.Shapes.KNI` NuGet package includes a pre-built content file (`apos-sha
 ### Deployment
 
 Deployed automatically to GitHub Pages on push to `main` via `.github/workflows/deploy.yml`. Uses `dotnet publish` which generates brotli-compressed framework files.
+
+---
+
+## Contributing
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for how to add new third-party libraries, examples, and other changes.
 
 ---
 

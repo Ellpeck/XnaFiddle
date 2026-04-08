@@ -50,9 +50,9 @@
     <AetherPhysicsVersion>2.2.0</AetherPhysicsVersion>
     <AposShapesVersion>0.6.8</AposShapesVersion>
     <FontStashSharpVersion>1.5.4</FontStashSharpVersion>
-    <GumVersion>2026.3.28.2</GumVersion>
+    <GumVersion>2026.4.5.1</GumVersion>
     <KniExtendedVersion>5.5.0</KniExtendedVersion>
-    <KernSmithVersion>0.12.0</KernSmithVersion>
+    <KernSmithVersion>0.12.3</KernSmithVersion>
   </PropertyGroup>
 
   <!-- Game libraries that XnaFiddle references directly (KNI variants).

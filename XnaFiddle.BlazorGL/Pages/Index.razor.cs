@@ -936,7 +936,8 @@ namespace XnaFiddle.Pages
 
         private async Task ExportProject()
         {
-            string projectName = string.IsNullOrWhiteSpace(_exportProjectName) ? "MyFiddle" : _exportProjectName.Trim();
+            string projectName = SanitizeProjectName(
+                string.IsNullOrWhiteSpace(_exportProjectName) ? "MyFiddle" : _exportProjectName.Trim());
             _isExporting = true;
             StateHasChanged();
             try
@@ -959,6 +960,22 @@ namespace XnaFiddle.Pages
                 _isExporting = false;
                 StateHasChanged();
             }
+        }
+
+        static string SanitizeProjectName(string name)
+        {
+            // Replace any character that isn't valid in a C# identifier with underscore
+            var sb = new System.Text.StringBuilder(name.Length);
+            foreach (char c in name)
+                sb.Append(char.IsLetterOrDigit(c) || c == '_' ? c : '_');
+
+            string result = sb.ToString();
+
+            // Must not start with a digit
+            if (result.Length > 0 && char.IsDigit(result[0]))
+                result = "_" + result;
+
+            return result.Length > 0 ? result : "MyFiddle";
         }
 
         private async Task ToggleLayout()
