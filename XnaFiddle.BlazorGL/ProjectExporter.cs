@@ -543,6 +543,7 @@ internal class Program
 
         static string GenerateBlazorIndexHtml(string projectName)
         {
+            string jsVer = PackageVersions.KniWasmJs;
             return $@"<!DOCTYPE html>
 <html>
 <head>
@@ -561,17 +562,17 @@ internal class Program
 
     <script src=""_framework/blazor.webassembly.js""></script>
 
-    <script src=""_content/nkast.Wasm.JSInterop/js/JSObject.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Dom/js/Window.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Dom/js/Document.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Dom/js/Navigator.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Dom/js/Gamepad.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Dom/js/Media.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.XHR/js/XHR.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Canvas/js/Canvas.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Canvas/js/CanvasGLContext.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.Audio/js/Audio.8.0.11.js""></script>
-    <script src=""_content/nkast.Wasm.XR/js/XR.8.0.11.js""></script>
+    <script src=""_content/nkast.Wasm.JSInterop/js/JSObject.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Dom/js/Window.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Dom/js/Document.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Dom/js/Navigator.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Dom/js/Gamepad.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Dom/js/Media.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.XHR/js/XHR.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Canvas/js/Canvas.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Canvas/js/CanvasGLContext.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.Audio/js/Audio.{jsVer}.js""></script>
+    <script src=""_content/nkast.Wasm.XR/js/XR.{jsVer}.js""></script>
 
     <script>
         function tickJS() {{

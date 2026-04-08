@@ -39,6 +39,9 @@
     <KniPlatformAndroidVersion>4.2.9001.1</KniPlatformAndroidVersion>
     <KniPlatformBlazorGLVersion>4.2.9001.2</KniPlatformBlazorGLVersion>
     <KniContentPipelineVersion>4.2.9001</KniContentPipelineVersion>
+    <!-- JS version shipped by the nkast.Wasm.* transitive packages.
+         Update when KNI platform NuGet packages bump their Wasm dependency. -->
+    <KniWasmJsVersion>8.0.11</KniWasmJsVersion>
 
     <!-- MonoGame framework — not used by XnaFiddle itself, only in exported projects -->
     <MonoGameFrameworkVersion>3.8.4.1</MonoGameFrameworkVersion>
@@ -101,6 +104,7 @@ namespace XnaFiddle {
         public const string KniPlatformAndroid = &quot;$(KniPlatformAndroidVersion)&quot;%3B
         public const string KniPlatformBlazorGL = &quot;$(KniPlatformBlazorGLVersion)&quot;%3B
         public const string KniContentPipeline = &quot;$(KniContentPipelineVersion)&quot;%3B
+        public const string KniWasmJs = &quot;$(KniWasmJsVersion)&quot;%3B
         // MonoGame
         public const string MonoGameFramework = &quot;$(MonoGameFrameworkVersion)&quot;%3B
         // Third-party libraries
