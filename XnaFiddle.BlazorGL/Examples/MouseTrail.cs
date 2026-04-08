@@ -10,7 +10,7 @@ using Gum.Forms;
 using Gum.Mvvm;
 using Gum.Forms.Controls;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     GraphicsDeviceManager graphics;
     SpriteBatch spriteBatch;
@@ -22,10 +22,11 @@ public class MyGame : Game
     int trailIndex;
     bool trailFilled;
 
-    public MyGame()
+    public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
-        graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
     }

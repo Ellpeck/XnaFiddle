@@ -2,7 +2,7 @@ using System;
 using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     GraphicsDeviceManager graphics;
     SpriteBatch spriteBatch;
@@ -11,10 +11,11 @@ public class MyGame : Game
     float scale = 1f;
     float scaleDir = 1f;
 
-    public MyGame()
+    public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
-        graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
     }

@@ -9,7 +9,7 @@ using Gum.Forms.Controls;
 
 using nkast.Aether.Physics2D.Dynamics;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     GraphicsDeviceManager graphics;
     GumService GumUI => GumService.Default;
@@ -40,10 +40,11 @@ public class MyGame : Game
     // Gum UI
     Label instructionLabel;
 
-    public MyGame()
+    public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
-        graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
     }

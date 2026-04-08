@@ -3,17 +3,18 @@ using Microsoft.Xna.Framework;
 using Microsoft.Xna.Framework.Graphics;
 using Apos.Shapes;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     GraphicsDeviceManager graphics;
     ShapeBatch shapeBatch;
     SpriteBatch spriteBatch;
     SpriteFont font;
 
-    public MyGame()
+    public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
-        graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
     }

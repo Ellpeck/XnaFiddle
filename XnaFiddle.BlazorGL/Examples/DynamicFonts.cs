@@ -15,7 +15,7 @@ using KernSmith;
 using KernSmith.Gum;
 using RenderingLibrary;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     GraphicsDeviceManager graphics;
     GumService GumUI => GumService.Default;
@@ -26,10 +26,11 @@ public class MyGame : Game
 
     static readonly string[] FontFamilies = ["Droid Sans"];
 
-    public MyGame()
+    public Game1()
     {
         graphics = new GraphicsDeviceManager(this);
-        graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            graphics.GraphicsProfile = GraphicsProfile.HiDef;
         IsMouseVisible = true;
         Window.AllowUserResizing = true;
     }

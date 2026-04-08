@@ -15,20 +15,59 @@
     <PublishTrimmed>false</PublishTrimmed>
   </PropertyGroup>
 
+  <!--
+    ╔══════════════════════════════════════════════════════════════════════╗
+    ║  LIBRARY VERSIONS — single source of truth                           ║
+    ║                                                                      ║
+    ║  These properties drive both the PackageReferences below AND the     ║
+    ║  generated PackageVersions class (used by ProjectExporter to emit    ║
+    ║  correct NuGet versions in exported projects).                       ║
+    ║                                                                      ║
+    ║  To update a library version, change it HERE — everything else       ║
+    ║  flows automatically. See GeneratePackageVersions target at bottom.  ║
+    ╚══════════════════════════════════════════════════════════════════════╝
+  -->
+  <PropertyGroup>
+    <!-- KNI framework — 10 core packages all share this version.
+         Update when the KniSB submodule is updated (XnaFiddle builds KNI from source,
+         but exported projects reference these NuGet packages). -->
+    <KniFrameworkVersion>4.2.9001</KniFrameworkVersion>
+
+    <!-- KNI platform packages — each platform may ship on its own release cadence -->
+    <KniPlatformDesktopGLVersion>4.2.9001.1</KniPlatformDesktopGLVersion>
+    <KniPlatformWindowsDXVersion>4.2.9001</KniPlatformWindowsDXVersion>
+    <KniPlatformAndroidVersion>4.2.9001.1</KniPlatformAndroidVersion>
+    <KniPlatformBlazorGLVersion>4.2.9001.2</KniPlatformBlazorGLVersion>
+    <KniContentPipelineVersion>4.2.9001</KniContentPipelineVersion>
+
+    <!-- MonoGame framework — not used by XnaFiddle itself, only in exported projects -->
+    <MonoGameFrameworkVersion>3.8.4.1</MonoGameFrameworkVersion>
+
+    <!-- Third-party game libraries -->
+    <AetherPhysicsVersion>2.2.0</AetherPhysicsVersion>
+    <AposShapesVersion>0.6.8</AposShapesVersion>
+    <FontStashSharpVersion>1.5.4</FontStashSharpVersion>
+    <GumVersion>2026.3.28.2</GumVersion>
+    <KniExtendedVersion>5.5.0</KniExtendedVersion>
+    <KernSmithVersion>0.12.0</KernSmithVersion>
+  </PropertyGroup>
+
+  <!-- Game libraries that XnaFiddle references directly (KNI variants).
+       Versions come from the properties above — do NOT hardcode here. -->
   <ItemGroup Condition=" '$(TargetFramework)' == 'net8.0' ">
-    <PackageReference Include="Aether.Physics2D.KNI" Version="2.2.0" />
-    <PackageReference Include="Apos.Shapes.KNI" Version="0.6.8" />
-    <PackageReference Include="FontStashSharp.Kni" Version="1.5.4" />
-    <PackageReference Include="Gum.KNI" Version="2026.3.28.2" />
-    <PackageReference Include="KNI.Extended" Version="5.5.0" />
+    <PackageReference Include="Aether.Physics2D.KNI" Version="$(AetherPhysicsVersion)" />
+    <PackageReference Include="Apos.Shapes.KNI" Version="$(AposShapesVersion)" />
+    <PackageReference Include="FontStashSharp.Kni" Version="$(FontStashSharpVersion)" />
+    <PackageReference Include="Gum.KNI" Version="$(GumVersion)" />
+    <PackageReference Include="KNI.Extended" Version="$(KniExtendedVersion)" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" Version="8.0.17" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.17" PrivateAssets="all" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="KernSmith" Version="0.12.0" />
-    <PackageReference Include="KernSmith.KniGum" Version="0.12.0" />
-    <PackageReference Include="KernSmith.Rasterizers.StbTrueType" Version="0.12.0" />
+    <PackageReference Include="KernSmith" Version="$(KernSmithVersion)" />
+    <PackageReference Include="KernSmith.KniGum" Version="$(KernSmithVersion)" />
+    <PackageReference Include="KernSmith.Rasterizers.StbTrueType" Version="$(KernSmithVersion)" />
     <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
     <PackageReference Include="MetadataReferenceService.BlazorWasm" Version="0.0.1" />
   </ItemGroup>
@@ -44,6 +83,40 @@
     <EmbeddedResource Include="Examples\*.*" Exclude="Examples\*.cs" />
   </ItemGroup>
 
+  <!-- Generate PackageVersions.g.cs — makes the version properties above available to C#.
+       ProjectExporter uses these constants to emit correct NuGet versions in exported projects.
+       The generated file lives in obj/ and is never checked in. -->
+  <Target Name="GeneratePackageVersions" BeforeTargets="CoreCompile">
+    <WriteLinesToFile File="$(IntermediateOutputPath)PackageVersions.g.cs" Overwrite="true" Lines="
+namespace XnaFiddle {
+    /// &lt;summary&gt;
+    /// Auto-generated from MSBuild properties in XnaFiddle.BlazorGL.csproj.
+    /// Do not edit — update the version properties in the csproj instead.
+    /// &lt;/summary&gt;
+    public static class PackageVersions {
+        // KNI
+        public const string KniFramework = &quot;$(KniFrameworkVersion)&quot;%3B
+        public const string KniPlatformDesktopGL = &quot;$(KniPlatformDesktopGLVersion)&quot;%3B
+        public const string KniPlatformWindowsDX = &quot;$(KniPlatformWindowsDXVersion)&quot;%3B
+        public const string KniPlatformAndroid = &quot;$(KniPlatformAndroidVersion)&quot;%3B
+        public const string KniPlatformBlazorGL = &quot;$(KniPlatformBlazorGLVersion)&quot;%3B
+        public const string KniContentPipeline = &quot;$(KniContentPipelineVersion)&quot;%3B
+        // MonoGame
+        public const string MonoGameFramework = &quot;$(MonoGameFrameworkVersion)&quot;%3B
+        // Third-party libraries
+        public const string AetherPhysics = &quot;$(AetherPhysicsVersion)&quot;%3B
+        public const string AposShapes = &quot;$(AposShapesVersion)&quot;%3B
+        public const string FontStashSharp = &quot;$(FontStashSharpVersion)&quot;%3B
+        public const string Gum = &quot;$(GumVersion)&quot;%3B
+        public const string KniExtended = &quot;$(KniExtendedVersion)&quot;%3B
+        public const string KernSmith = &quot;$(KernSmithVersion)&quot;%3B
+    }
+}" />
+    <ItemGroup>
+      <Compile Include="$(IntermediateOutputPath)PackageVersions.g.cs" />
+    </ItemGroup>
+  </Target>
+
   <!-- Generate BuildInfo.g.cs with the UTC build timestamp into obj/ -->
   <Target Name="GenerateBuildInfo" BeforeTargets="CoreCompile">
     <PropertyGroup>
@@ -54,5 +127,6 @@
       <Compile Include="$(IntermediateOutputPath)BuildInfo.g.cs" />
     </ItemGroup>
   </Target>
+
 
 </Project>
