@@ -10,7 +10,7 @@ using Gum.Forms;
 using Gum.Forms.Controls;
 using Gum.DataTypes;
 
-public class MyGame : Game
+public class Game1 : Game
 {
     // ── Character data model ────────────────────────────────────────────────
 
@@ -72,10 +72,11 @@ public class MyGame : Game
 
     // ── Constructor ──────────────────────────────────────────────────────────
 
-    public MyGame()
+    public Game1()
     {
         _graphics = new GraphicsDeviceManager(this);
-        _graphics.GraphicsProfile = GraphicsProfile.HiDef;
+        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))
+            _graphics.GraphicsProfile = GraphicsProfile.HiDef;
         _graphics.PreferredBackBufferWidth  = 900;
         _graphics.PreferredBackBufferHeight = 600;
         IsMouseVisible = true;

@@ -1,0 +1,122 @@
+# Contributing to XnaFiddle
+
+## Security Notice
+
+**All PRs that add new third-party libraries are closely scrutinized for security reasons.** XnaFiddle runs user-submitted code in the browser — every library we include becomes part of the attack surface. Expect thorough review of the library's source, dependencies, and any APIs it exposes to user code.
+
+---
+
+## Adding a Third-Party Library
+
+XnaFiddle supports game libraries like Gum, Apos.Shapes, FontStashSharp, and others. Adding a new library touches several files across the project. This guide walks through each integration point.
+
+### Prerequisites
+
+- The library must have a published NuGet package
+- KNI and/or MonoGame variants should be available
+- The library must be safe to expose to untrusted user code (no file system access, no networking, no reflection)
+
+### Step-by-Step Checklist
+
+#### 1. Version Property and PackageReference (`XnaFiddle.BlazorGL.csproj`)
+
+Add a version property in the `LIBRARY VERSIONS` property group (near the top of the file):
+
+```xml
+<NewLibraryVersion>1.0.0</NewLibraryVersion>
+```
+
+Add a PackageReference for the KNI variant (so XnaFiddle can compile user code that uses it):
+
+```xml
+<PackageReference Include="NewLibrary.KNI" Version="$(NewLibraryVersion)" />
+```
+
+Add the version constant to the `GeneratePackageVersions` MSBuild target (near the bottom of the file):
+
+```
+public const string NewLibrary = "$(NewLibraryVersion)"%3B
+```
+
+This auto-generates a `PackageVersions.NewLibrary` constant that the exporter uses.
+
+#### 2. Export Detection (`ProjectExporter.cs`)
+
+In `BuildPackageList()`, add a source-scanning block that detects the library by namespace or type name. Do not require a `using` prefix — the detection should work with fully qualified references too:
+
+```csharp
+if (source.Contains("NewLibrary.SomeNamespace"))
+{
+    packages.Add(new NuGetPackage
+    {
+        Id = isKni ? "NewLibrary.KNI" : "NewLibrary",
+        Version = PackageVersions.NewLibrary
+    });
+}
+```
+
+Pick a detection string that is specific enough to avoid false positives but general enough to catch all usage patterns.
+
+#### 3. Roslyn Assembly Resolution (`CompilationService.cs`)
+
+Add the library's assembly name(s) to the `KniAssemblyNames` array so Roslyn can resolve types at compile time:
+
+```csharp
+"NewLibrary.KNI",
+```
+
+If the library has multiple assemblies (e.g. a base package + platform package), add all of them.
+
+Optionally, add an entry to `versionTargets` to display the library version in the diagnostics panel:
+
+```csharp
+("NewLibrary", ["NewLibrary.KNI"]),
+```
+
+#### 4. Example (`Examples/`)
+
+Create an example `.cs` file in `XnaFiddle.BlazorGL/Examples/`. The file:
+
+- Must **not** define a namespace (class goes at the top level)
+- Should use `Game1` as the class name
+- Should guard `GraphicsProfile.HiDef` with `IsProfileSupported` if used
+- Should demonstrate the library's key features with minimal, clear code
+
+Register the example in `ExampleGallery.cs` so it appears in the dropdown.
+
+#### 5. Optional: Snippet Preset
+
+If the library requires boilerplate that users shouldn't have to write every time (initialization, per-frame calls, etc.), you can add a **preset**:
+
+1. **`SnippetModel.cs`** — Add a `public bool IsNewLibrary` property
+2. **`SnippetExpander.cs`** — Add an `if (model.IsNewLibrary)` block that injects usings, member fields, and method calls into the appropriate lifecycle methods
+3. **`SnippetReverter.cs`** — Add detection logic so existing full-class code can be identified as using the preset (using arrays, injected member checks, injected statement predicates)
+4. **`Pages/Index.razor`** — Add a preset checkbox in the UI
+5. **`Pages/Index.razor.cs`** — Add library assignment in SnippetModel creation (there are 2 locations)
+
+Most libraries do **not** need a preset — presets are only for libraries that inject significant boilerplate (like Gum's `GumService.Initialize` / `Update` / `Draw` pattern).
+
+#### 6. Optional: Static State Cleanup
+
+If the library maintains global/static state between game runs (like Gum's `GumService.Default`), add cleanup logic in `Pages/Index.razor.cs` using reflection. See `CleanUpGumService()` for an example. This ensures that recompiling and running new code doesn't carry over stale state from the previous run.
+
+#### 7. Optional: Security Exceptions
+
+If the library uses namespaces or types that collide with blocked patterns in `SecurityChecker.cs`, you may need to add exceptions. This is rare and will receive extra scrutiny during review.
+
+---
+
+## Adding Examples
+
+Add a `.cs` file to `XnaFiddle.BlazorGL/Examples/`. It will be embedded as a resource automatically. Register it in `ExampleGallery.cs` with a name, category, and description.
+
+See existing examples for the expected structure.
+
+---
+
+## General Guidelines
+
+- Keep PRs focused — one library or feature per PR
+- Test your changes across at least KNI DesktopGL and one MonoGame target
+- Test the export to verify the correct NuGet packages are included
+- Run `dotnet build XnaFiddle.BlazorGL/XnaFiddle.BlazorGL.csproj` and ensure zero warnings

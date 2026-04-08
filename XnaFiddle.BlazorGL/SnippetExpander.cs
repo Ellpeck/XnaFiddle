@@ -102,7 +102,8 @@ namespace XnaFiddle
             sb.AppendLine("    public FiddleGame()");
             sb.AppendLine("    {");
             sb.AppendLine("        graphics = new GraphicsDeviceManager(this);");
-            sb.AppendLine("        graphics.GraphicsProfile = GraphicsProfile.HiDef;");
+            sb.AppendLine("        if (GraphicsAdapter.DefaultAdapter.IsProfileSupported(GraphicsProfile.HiDef))");
+            sb.AppendLine("            graphics.GraphicsProfile = GraphicsProfile.HiDef;");
             sb.AppendLine("        IsMouseVisible = true;");
             sb.AppendLine("        Window.AllowUserResizing = true;");
             sb.AppendLine("    }");

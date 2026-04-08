@@ -38,7 +38,6 @@ namespace XnaFiddle.Pages
         bool _assetsOpen;
         bool _gistOpen;
         bool _gistCodeCopied;
-        bool _runLocallyOpen;
         bool _layoutVertical;
         bool _embedMode;
         bool _shareOpen;
@@ -72,23 +71,14 @@ namespace XnaFiddle.Pages
             public string SourceUrl;     // non-null when loaded from a URL (for share link encoding)
         }
 
-        struct PackageInfo
-        {
-            public string Feature;
-            public string KniPackage;
-            public string MonoGamePackage;
-            public string DetectionString;
-        }
+        enum ExportRuntime { Kni, MonoGame }
+        enum ExportPlatform { DesktopGL, WindowsDX, Android, BlazorGL }
 
-        static readonly PackageInfo[] KnownPackages =
-        [
-            new PackageInfo { Feature = "Gum UI",          KniPackage = "Gum.KNI",            MonoGamePackage = "Gum.MonoGame",    DetectionString = "MonoGameGum" },
-            new PackageInfo { Feature = "Shapes",           KniPackage = "Apos.Shapes.KNI",    MonoGamePackage = "Apos.Shapes",     DetectionString = "Apos.Shapes" },
-            new PackageInfo { Feature = "FontStashSharp",   KniPackage = "FontStashSharp.Kni", MonoGamePackage = "FontStashSharp",  DetectionString = "FontStashSharp" },
-            new PackageInfo { Feature = "MonoGame.Extended", KniPackage = "KNI.Extended",      MonoGamePackage = "MonoGame.Extended", DetectionString = "MonoGame.Extended" },
-        ];
-
-        List<PackageInfo> _runLocallyPackages = new();
+        bool _exportOpen;
+        bool _isExporting;
+        ExportRuntime _exportRuntime = ExportRuntime.Kni;
+        ExportPlatform _exportPlatform = ExportPlatform.DesktopGL;
+        string _exportProjectName = "MyFiddle";
         List<AssetInfo> _assets = new();
         string _assetUrlInput = "";
         bool _isFetchingAssetUrl;
@@ -924,32 +914,74 @@ namespace XnaFiddle.Pages
             }
         }
 
-        private async Task ToggleRunLocally()
+        ExportTarget GetExportTarget() => (_exportRuntime, _exportPlatform) switch
         {
-            _runLocallyOpen = !_runLocallyOpen;
-            if (_runLocallyOpen)
+            (ExportRuntime.Kni, ExportPlatform.DesktopGL)  => ExportTarget.KniDesktopGL,
+            (ExportRuntime.Kni, ExportPlatform.WindowsDX)  => ExportTarget.KniWindowsDX,
+            (ExportRuntime.Kni, ExportPlatform.Android)    => ExportTarget.KniAndroid,
+            (ExportRuntime.Kni, ExportPlatform.BlazorGL)   => ExportTarget.KniBlazorGL,
+            (ExportRuntime.MonoGame, ExportPlatform.DesktopGL) => ExportTarget.MonoGameDesktopGL,
+            (ExportRuntime.MonoGame, ExportPlatform.WindowsDX) => ExportTarget.MonoGameWindowsDX,
+            (ExportRuntime.MonoGame, ExportPlatform.Android)   => ExportTarget.MonoGameAndroid,
+            // MonoGame + BlazorGL is not valid — fall back to DesktopGL
+            _ => ExportTarget.MonoGameDesktopGL,
+        };
+
+        void SetExportRuntime(ExportRuntime runtime)
+        {
+            _exportRuntime = runtime;
+            if (runtime == ExportRuntime.MonoGame && _exportPlatform == ExportPlatform.BlazorGL)
+                _exportPlatform = ExportPlatform.DesktopGL;
+        }
+
+        private async Task ExportProject()
+        {
+            string projectName = SanitizeProjectName(
+                string.IsNullOrWhiteSpace(_exportProjectName) ? "MyFiddle" : _exportProjectName.Trim());
+            _isExporting = true;
+            StateHasChanged();
+            try
             {
                 string code = _monacoReady
                     ? await JsRuntime.InvokeAsync<string>("monacoInterop.getValue")
                     : "";
-                RefreshRunLocallyPackages(code);
+
+                var assets = InMemoryContentManager.Files;
+                byte[] zipBytes = ProjectExporter.Export(code, GetExportTarget(), projectName, assets: assets.Count > 0 ? assets : null);
+                string base64 = Convert.ToBase64String(zipBytes);
+                await JsRuntime.InvokeVoidAsync("downloadFile", projectName + ".zip", base64);
             }
+            catch (Exception ex)
+            {
+                SetError("Export failed.", ex.Message);
+            }
+            finally
+            {
+                _isExporting = false;
+                StateHasChanged();
+            }
+        }
+
+        static string SanitizeProjectName(string name)
+        {
+            // Replace any character that isn't valid in a C# identifier with underscore
+            var sb = new System.Text.StringBuilder(name.Length);
+            foreach (char c in name)
+                sb.Append(char.IsLetterOrDigit(c) || c == '_' ? c : '_');
+
+            string result = sb.ToString();
+
+            // Must not start with a digit
+            if (result.Length > 0 && char.IsDigit(result[0]))
+                result = "_" + result;
+
+            return result.Length > 0 ? result : "MyFiddle";
         }
 
         private async Task ToggleLayout()
         {
             _layoutVertical = !_layoutVertical;
             await JsRuntime.InvokeVoidAsync("setLayoutMode", _layoutVertical);
-        }
-
-        private void RefreshRunLocallyPackages(string code)
-        {
-            _runLocallyPackages.Clear();
-            foreach (var pkg in KnownPackages)
-            {
-                if (code.Contains(pkg.DetectionString))
-                    _runLocallyPackages.Add(pkg);
-            }
         }
 
         private void OpenExampleBrowser()
@@ -993,9 +1025,6 @@ namespace XnaFiddle.Pages
                 await JsRuntime.InvokeVoidAsync("clearCanvas");
 
                 LoadExampleAssets(name);
-
-                if (_runLocallyOpen)
-                    RefreshRunLocallyPackages(code);
 
                 CompileAndRun();
             }
