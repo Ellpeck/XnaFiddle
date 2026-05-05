@@ -43,6 +43,7 @@ Pass any of these names to `?example=`:
 |---|---|
 | `BouncingBall` | A ball that bounces off the edges of the screen |
 | `MouseTrail` | Trail of circles that follow the mouse cursor |
+| `SoundPlayback` | Load and play a WAV sound effect with keyboard controls |
 | `TextureLoading` | Load and display a texture from a file |
 | `AetherPhysics` | 2D physics simulation with a bouncing ball and keyboard controls |
 | `AposShapes` | Draw shapes with the Apos.Shapes library |
